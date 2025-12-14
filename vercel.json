@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/web/package.json",
+      "use": "@vercel/next",
+      "config": {
+        "distDir": ".next"
+      }
+    },
+    {
+      "src": "apps/admin/package.json", 
+      "use": "@vercel/next",
+      "config": {
+        "distDir": ".next"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/admin/(.*)",
+      "dest": "/apps/admin/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/apps/web/$1"
+    }
+  ],
+  "functions": {
+    "apps/web/src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    },
+    "apps/admin/src/app/api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm turbo build",
+  "outputDirectory": "apps/web/.next",
+  "framework": "nextjs",
+  "nodeVersion": "18.x"
+}

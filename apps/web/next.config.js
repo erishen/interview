@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+  transpilePackages: ["@interview/ui", "@interview/utils", "@interview/config", "@interview/types"],
+  output: 'standalone',
   experimental: {
-    transpilePackages: ["@interview/ui", "@interview/utils", "@interview/config", "@interview/types"],
+    outputFileTracingRoot: require('path').join(__dirname, '../../'),
   },
   typescript: {
     ignoreBuildErrors: false,

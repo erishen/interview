@@ -2,8 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@interview/ui', '@interview/utils', '@interview/config', '@interview/types'],
+  output: 'standalone',
   experimental: {
-    appDir: true,
+    outputFileTracingRoot: require('path').join(__dirname, '../../'),
   },
 }
 

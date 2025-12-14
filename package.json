@@ -13,7 +13,10 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo run build --filter=!@interview/docs && changeset publish"
+    "release": "turbo run build --filter=!@interview/docs && changeset publish",
+    "deploy:web": "turbo run build --filter=@interview/web",
+    "deploy:admin": "turbo run build --filter=@interview/admin",
+    "deploy:all": "turbo run build"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.9",
