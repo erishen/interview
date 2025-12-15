@@ -37,6 +37,5 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm turbo build",
   "outputDirectory": "apps/web/.next",
-  "framework": "nextjs",
-  "nodeVersion": "18.x"
+  "framework": "nextjs"
 }
