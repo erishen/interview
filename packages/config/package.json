@@ -11,8 +11,12 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "styled-components": "catalog:"
+  },
   "devDependencies": {
-    "eslint": "^8.55.0",
-    "typescript": "^5.3.3"
+    "@types/styled-components": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
   }
 }
