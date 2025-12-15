@@ -3430,13 +3430,4 @@ function buildMaxHeap(arr) {
   }
 }
 
-function heapify(arr, i, heapSize) {
-  const left = 2 * i + 1;
-  const right = 2 * i + 2;
-  let largest = i;
-  
-  if (left < heapSize && arr[left] > arr[largest]) {
-    largest = left;
-  }
-  
-  
+# frontend-extended
