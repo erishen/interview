@@ -16,7 +16,9 @@
     "release": "turbo run build --filter=!@interview/docs && changeset publish",
     "deploy:web": "turbo run build --filter=@interview/web",
     "deploy:admin": "turbo run build --filter=@interview/admin",
-    "deploy:all": "turbo run build"
+    "deploy:all": "turbo run build",
+    "storybook": "turbo run storybook",
+    "build-storybook": "turbo run build-storybook"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.9",

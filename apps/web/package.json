@@ -8,28 +8,42 @@
     "lint": "next lint",
     "start": "next start",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf .next"
+    "clean": "rm -rf .next",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@interview/ui": "workspace:*",
-    "@interview/utils": "workspace:*",
     "@interview/config": "workspace:*",
     "@interview/types": "workspace:*",
+    "@interview/ui": "workspace:*",
+    "@interview/utils": "workspace:*",
+    "autoprefixer": "catalog:",
     "next": "catalog:",
+    "postcss": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "styled-components": "catalog:",
-    "tailwindcss": "catalog:",
-    "autoprefixer": "catalog:",
-    "postcss": "catalog:"
+    "tailwindcss": "catalog:"
   },
   "devDependencies": {
+    "@storybook/addon-docs": "^8.4.7",
+    "@storybook/addon-essentials": "^8.4.7",
+    "@storybook/addon-interactions": "^8.4.7",
+    "@storybook/addon-links": "^8.4.7",
+    "@storybook/addon-onboarding": "^8.4.7",
+    "@storybook/blocks": "^8.4.7",
+    "@storybook/react": "^8.4.7",
+    "@storybook/react-vite": "^8.4.7",
+    "@storybook/test": "^8.4.7",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/styled-components": "catalog:",
+    "@vitejs/plugin-react": "^5.1.2",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",
-    "typescript": "catalog:"
+    "storybook": "^8.4.7",
+    "typescript": "catalog:",
+    "vite": "^6.0.3"
   }
 }
