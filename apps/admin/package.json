@@ -28,6 +28,9 @@
     "jsonwebtoken": "catalog:",
     "dotenv": "catalog:"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/react": "catalog:",
