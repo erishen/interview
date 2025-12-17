@@ -20,6 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@/lib/*": ["./src/lib/*"],
       "@interview/ui": ["../../packages/ui/src"],
       "@interview/utils": ["../../packages/utils/src"],
       "@interview/config": ["../../packages/config/src"],
@@ -30,7 +31,8 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "src/types/**/*.d.ts"
   ],
   "exclude": ["node_modules"]
 }

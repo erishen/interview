@@ -50,7 +50,7 @@ pnpm dev
 
 This will start:
 - Web app at http://localhost:3000
-- Admin app at http://localhost:3001
+- Admin app at http://localhost:3003
 
 ## 📦 Available Scripts
 

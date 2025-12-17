@@ -1,0 +1,25 @@
+import { NextRequest, NextResponse } from 'next/server'
+import passport from '@/lib/passport'
+
+export async function GET(request: NextRequest) {
+  try {
+    return new Promise((resolve) => {
+      passport.authenticate('google', {
+        failureRedirect: '/auth/signin?error=google_auth_failed'
+      })(request as any, {
+        redirect: (url: string) => {
+          // On successful authentication, redirect to dashboard
+          resolve(NextResponse.redirect(new URL('/dashboard', request.url)))
+        }
+      } as any, (err: any) => {
+        if (err) {
+          resolve(NextResponse.redirect(new URL('/auth/signin?error=google_auth_failed', request.url)))
+        } else {
+          resolve(NextResponse.redirect(new URL('/dashboard', request.url)))
+        }
+      })
+    })
+  } catch (error) {
+    return NextResponse.redirect(new URL('/auth/signin?error=google_auth_failed', request.url))
+  }
+}

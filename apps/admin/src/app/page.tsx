@@ -1,26 +1,41 @@
+'use client'
+
+import { useSession } from 'next-auth/react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+
 export default function AdminPage() {
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-8">
-            Admin Dashboard
-          </h1>
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              Welcome to Admin Panel
-            </h2>
-            <p className="text-gray-600">
-              This is the admin dashboard for the interview project.
-            </p>
-            <div className="mt-6">
-              <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
-                Get Started
-              </button>
-            </div>
-          </div>
-        </div>
+  const { data: session, status } = useSession()
+  const { user: passportUser } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === 'loading') return // Still loading
+
+    // If user is authenticated, redirect to dashboard
+    if (session || passportUser) {
+      router.push('/dashboard')
+      return
+    }
+
+    // If user is not authenticated, redirect to signin
+    router.push('/auth/signin')
+  }, [session, passportUser, status, router])
+
+  // Show loading while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
+    )
+  }
+
+  // This should not be reached due to redirects above, but just in case
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
     </div>
   )
 }
