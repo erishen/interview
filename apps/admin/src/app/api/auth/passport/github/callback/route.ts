@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import passport from '@/lib/passport'
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<Response> {
   try {
-    return new Promise((resolve) => {
+    return new Promise<Response>((resolve) => {
       passport.authenticate('github', {
         failureRedirect: '/auth/signin?error=github_auth_failed'
       })(request as any, {
