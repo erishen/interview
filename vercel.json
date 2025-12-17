@@ -1,25 +1,5 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/admin/(.*)",
-      "dest": "/apps/admin/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/apps/web/$1"
-    }
-  ],
-  "functions": {
-    "apps/web/src/app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    },
-    "apps/admin/src/app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm turbo build",
-  "outputDirectory": "apps/web/.next",
-  "framework": "nextjs"
+  "buildCommand": "pnpm turbo build"
 }
