@@ -54,6 +54,16 @@ export const authOptions: NextAuthOptions = {
       GoogleProvider({
         clientId: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        httpOptions: {
+          timeout: 20000, // 20 seconds timeout
+        },
+        authorization: {
+          params: {
+            prompt: "consent",
+            access_type: "offline",
+            response_type: "code"
+          }
+        }
       })
     ] : []),
     
@@ -62,6 +72,9 @@ export const authOptions: NextAuthOptions = {
       GitHubProvider({
         clientId: process.env.GITHUB_CLIENT_ID,
         clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        httpOptions: {
+          timeout: 20000, // 20 seconds timeout
+        },
       })
     ] : []),
     
@@ -101,6 +114,7 @@ export const authOptions: NextAuthOptions = {
   
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   
   callbacks: {
@@ -126,4 +140,7 @@ export const authOptions: NextAuthOptions = {
   },
   
   secret: process.env.NEXTAUTH_SECRET,
+  
+  // Add debug mode for development
+  debug: process.env.NODE_ENV === 'development',
 }
