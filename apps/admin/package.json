@@ -26,7 +26,8 @@
     "passport-github2": "catalog:",
     "bcryptjs": "catalog:",
     "jsonwebtoken": "catalog:",
-    "dotenv": "catalog:"
+    "dotenv": "catalog:",
+    "lusca": "catalog:"
   },
   "engines": {
     "node": "20.x"
@@ -42,6 +43,7 @@
     "@types/passport-github2": "catalog:",
     "@types/bcryptjs": "catalog:",
     "@types/jsonwebtoken": "catalog:",
+    "@types/lusca": "catalog:",
     "autoprefixer": "catalog:",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",

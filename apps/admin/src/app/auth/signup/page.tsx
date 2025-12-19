@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCSRFContext } from '@/contexts/CSRFContext'
+import { createCSRFHeaders } from '@/hooks/useCSRF'
 import { Button, Input, Card } from '@interview/ui'
+import Link from 'next/link'
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -15,6 +18,7 @@ export default function SignUpPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const router = useRouter()
+  const { csrfToken, loading: csrfLoading } = useCSRFContext()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -42,17 +46,23 @@ export default function SignUpPage() {
       return
     }
 
+    // 等待 CSRF token 加载完成
+    if (csrfLoading || !csrfToken) {
+      setError('CSRF token not ready. Please wait...')
+      setLoading(false)
+      return
+    }
+
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: createCSRFHeaders(csrfToken),
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
           password: formData.password,
         }),
+        credentials: 'include',
       })
 
       const data = await response.json()
@@ -130,6 +140,12 @@ export default function SignUpPage() {
               </div>
             )}
 
+            {csrfLoading && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
+                Loading CSRF protection...
+              </div>
+            )}
+
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                 Full Name
@@ -201,7 +217,7 @@ export default function SignUpPage() {
             <div>
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || csrfLoading}
                 className="w-full"
               >
                 {loading ? 'Creating account...' : 'Create account'}

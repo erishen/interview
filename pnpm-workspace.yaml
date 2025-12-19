@@ -48,3 +48,6 @@ catalog:
   "@types/bcryptjs": "^2.4.6"
   "@types/jsonwebtoken": "^9.0.7"
   "dotenv": "^16.4.5"
+  # Security dependencies
+  "lusca": "^1.7.0"
+  "@types/lusca": "^1.7.3"

@@ -2,6 +2,10 @@
 
 A modern interview project built with Next.js and monorepo architecture using Turborepo.
 
+# Vercel URL
+- https://interview-admin-six.vercel.app
+- https://interview-web-sand.vercel.app
+
 ## 🏗️ Architecture
 
 This project uses a monorepo structure with the following organization:
