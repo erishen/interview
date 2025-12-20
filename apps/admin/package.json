@@ -27,7 +27,9 @@
     "bcryptjs": "catalog:",
     "jsonwebtoken": "catalog:",
     "dotenv": "catalog:",
-    "lusca": "catalog:"
+    "lusca": "catalog:",
+    "redis": "catalog:",
+    "ioredis": "catalog:"
   },
   "engines": {
     "node": "20.x"
@@ -44,6 +46,8 @@
     "@types/bcryptjs": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lusca": "catalog:",
+    "@types/redis": "catalog:",
+    "@types/ioredis": "catalog:",
     "autoprefixer": "catalog:",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",

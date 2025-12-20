@@ -18,11 +18,13 @@
     "@interview/ui": "workspace:*",
     "@interview/utils": "workspace:*",
     "autoprefixer": "catalog:",
+    "ioredis": "catalog:",
     "lusca": "catalog:",
     "next": "catalog:",
     "postcss": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "redis": "catalog:",
     "styled-components": "catalog:",
     "tailwindcss": "catalog:"
   },
