@@ -22,6 +22,8 @@ const defaultConfig: RedisConfig = {
   enableReadyCheck: false,
   maxRetriesPerRequest: 3,
   lazyConnect: true,
+  connectTimeout: 5000, // 5 秒连接超时
+  commandTimeout: 5000, // 5 秒命令超时
 }
 
 // Redis client instance

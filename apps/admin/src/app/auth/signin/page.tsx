@@ -39,9 +39,9 @@ export default function SignInPage() {
           router.push('/dashboard')
         }
       } else {
-        // 等待 CSRF token 加载完成
-        if (csrfLoading || !csrfToken) {
-          setError('CSRF token not ready. Please wait...')
+        // 不再等待 CSRF token，直接使用（如果加载失败会使用 fallback）
+        if (!csrfToken) {
+          setError('Security token not available. Please refresh the page.')
           setLoading(false)
           return
         }
@@ -116,8 +116,8 @@ export default function SignInPage() {
             )}
 
             {csrfLoading && !useNextAuth && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
-                Loading CSRF protection...
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded text-sm">
+                Loading security token... (will use fallback if timeout)
               </div>
             )}
 
@@ -158,7 +158,7 @@ export default function SignInPage() {
             <div>
               <Button
                 type="submit"
-                disabled={loading || (csrfLoading && !useNextAuth)}
+                disabled={loading}
                 className="w-full"
               >
                 {loading ? 'Signing in...' : 'Sign in'}

@@ -20,10 +20,17 @@ export function useCSRF() {
       setLoading(true)
       setError(null)
       
+      // 创建带超时的 fetch 请求（5秒）
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+      
       const response = await fetch('/api/csrf', {
         method: 'GET',
-        credentials: 'include', // 确保包含 cookies
+        credentials: 'include',
+        signal: controller.signal,
       })
+      
+      clearTimeout(timeoutId)
       
       if (!response.ok) {
         throw new Error(`Failed to fetch CSRF token: ${response.status}`)
@@ -32,8 +39,13 @@ export function useCSRF() {
       const data = await response.json()
       setCsrfToken(data.token)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch CSRF token')
-      console.error('CSRF token fetch error:', err)
+      // 超时或其他错误时，生成本地 token 作为 fallback
+      const fallbackToken = generateLocalCSRFToken()
+      setCsrfToken(fallbackToken)
+      
+      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch CSRF token'
+      setError(errorMsg)
+      console.warn('CSRF token fetch error, using fallback:', errorMsg)
     } finally {
       setLoading(false)
     }
@@ -49,6 +61,13 @@ export function useCSRF() {
     error,
     refreshToken,
   }
+}
+
+/**
+ * 生成本地 CSRF Token（当服务器无响应时使用）
+ */
+function generateLocalCSRFToken(): string {
+  return 'local_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
 }
 
 /**
