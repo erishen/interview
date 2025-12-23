@@ -1,6 +1,6 @@
 // Configuration
 export { siteConfig } from "./site";
-export { apiConfig } from "./api";
+export { apiConfig, fastApiConfig } from "./api";
 export { dbConfig } from "./database";
 
 // Styled Components Theme

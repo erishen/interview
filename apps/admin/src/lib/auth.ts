@@ -15,13 +15,22 @@ declare module 'next-auth' {
       role: string
     }
   }
-  
+
   interface User {
     id: string
     email: string
     name: string
     role: string
   }
+}
+
+// Internal user type with password
+interface InternalUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  password: string
 }
 
 declare module 'next-auth/jwt' {
@@ -51,26 +60,27 @@ const users = [
 /**
  * Get user by email with Redis caching (with timeout)
  */
-async function getUserByEmail(email: string) {
+async function getUserByEmail(email: string): Promise<InternalUser | null> {
+  const cacheKey = `user:${email}`
+
   try {
     // Try to get from cache first (with 2 second timeout)
-    const cacheKey = `user:${email}`
     const cachedUser = await Promise.race([
       redisCache.get(cacheKey),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 2000))
     ]).catch(() => null)
-    
+
     if (cachedUser) {
       console.log('User found in cache:', email)
-      return cachedUser
+      return cachedUser as InternalUser
     }
   } catch (error) {
     console.warn('Redis cache error, continuing without cache:', error)
   }
-  
+
   // If not in cache, get from database
   const user = users.find(user => user.email === email)
-  
+
   if (user) {
     // Try to cache user data for 5 minutes (non-blocking)
     try {
@@ -81,8 +91,8 @@ async function getUserByEmail(email: string) {
       console.warn('Redis cache set error, continuing:', error)
     }
   }
-  
-  return user
+
+  return user || null
 }
 
 export const authOptions: NextAuthOptions = {

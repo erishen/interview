@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button, Input, Card } from '@interview/ui'
+import { fastApiConfig } from '@interview/config'
 
 // FastAPI 服务配置 - 使用代理 API 避免 CORS 问题
 const FASTAPI_BASE_URL = '/api/fastapi/'
@@ -137,12 +138,13 @@ export default function ApiIntegrationPage() {
     setAuthLoading(true)
 
     // 使用代理 API 调用登录
-    const result = await apiCall<AuthResponse>('auth/login', {
+    const result = await apiCall<AuthResponse>(fastApiConfig.endpoints.auth.login, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
+        grant_type: 'password',
         username: loginForm.username,
         password: loginForm.password,
       }).toString(),
@@ -155,10 +157,19 @@ export default function ApiIntegrationPage() {
       alert('登录成功！')
     } else {
       console.error('Login failed:', result.error)
-      alert(`登录失败: ${result.error}`)
+      if (result.error?.includes('500') || result.error?.includes('服务器内部错误')) {
+        alert(`外部API认证服务暂时不可用 (500错误)。\n您可以先测试其他功能，如健康检查、Redis操作等。\n\n错误详情: ${result.error}`)
+      } else {
+        alert(`登录失败: ${result.error}`)
+      }
     }
 
     setAuthLoading(false)
+  }
+
+  const handleSkipAuth = () => {
+    setToken('skipped-auth')
+    alert('已跳过认证，您可以测试其他API功能了！')
   }
 
   const handleGetUserInfo = async () => {
@@ -175,8 +186,21 @@ export default function ApiIntegrationPage() {
   // ============ 商品管理功能 ============
 
   const loadItems = async () => {
+    console.log('loadItems called, token present:', !!token)
+    console.log('token value:', token?.substring(0, 50) + '...')
+
+    if (!token) {
+      alert('请先登录后再加载商品列表')
+      return
+    }
+
     setItemsLoading(true)
-    const result = await apiCall<Item[]>('/items/')
+    const endpoint = fastApiConfig.endpoints.items.list.replace(/\/$/, '')
+    console.log('Calling endpoint:', endpoint)
+
+    const result = await apiCall<Item[]>(endpoint)
+    console.log('API call result:', result)
+
     if (result.success) {
       setItems(result.data!)
     } else {
@@ -186,12 +210,17 @@ export default function ApiIntegrationPage() {
   }
 
   const handleCreateItem = async () => {
+    if (!token) {
+      alert('请先登录后再创建商品')
+      return
+    }
+
     if (!itemForm.name || !itemForm.price) {
       alert('请输入商品名称和价格')
       return
     }
 
-    const result = await apiCall<Item>('/items/', {
+    const result = await apiCall<Item>(fastApiConfig.endpoints.items.create, {
       method: 'POST',
       body: JSON.stringify({
         name: itemForm.name,
@@ -211,9 +240,14 @@ export default function ApiIntegrationPage() {
   }
 
   const handleDeleteItem = async (itemId: number) => {
+    if (!token) {
+      alert('请先登录后再删除商品')
+      return
+    }
+
     if (!confirm('确定要删除这个商品吗？')) return
 
-    const result = await apiCall(`/items/${itemId}`, {
+    const result = await apiCall(`${fastApiConfig.endpoints.items.update}${itemId}`, {
       method: 'DELETE',
     })
 
@@ -228,8 +262,14 @@ export default function ApiIntegrationPage() {
   // ============ Redis 管理功能 ============
 
   const loadRedisStats = async () => {
+    if (!token) {
+      alert('请先登录后再查看 Redis 统计')
+      return
+    }
+
     setRedisLoading(true)
-    const result = await apiCall<RedisStats>('/redis/stats')
+    // 暂时跳过Redis认证问题，使用跳过认证的标记
+    const result = await apiCall<RedisStats>(fastApiConfig.endpoints.redis.stats)
     if (result.success) {
       setRedisStats(result.data!)
     } else {
@@ -239,8 +279,13 @@ export default function ApiIntegrationPage() {
   }
 
   const loadRedisKeys = async () => {
+    if (!token) {
+      alert('请先登录后再查看 Redis 键')
+      return
+    }
+
     setRedisLoading(true)
-    const result = await apiCall<string[]>('/redis/keys')
+    const result = await apiCall<string[]>(fastApiConfig.endpoints.redis.keys)
     if (result.success) {
       setRedisKeys(result.data!)
     } else {
@@ -250,12 +295,17 @@ export default function ApiIntegrationPage() {
   }
 
   const handleSetRedisValue = async () => {
+    if (!token) {
+      alert('请先登录后再设置 Redis 值')
+      return
+    }
+
     if (!redisKey || !redisValue) {
       alert('请输入键和值')
       return
     }
 
-    const result = await apiCall('/redis/set', {
+    const result = await apiCall(fastApiConfig.endpoints.redis.set, {
       method: 'POST',
       body: JSON.stringify({
         key: redisKey,
@@ -340,6 +390,14 @@ export default function ApiIntegrationPage() {
                   className="w-full"
                 >
                   {authLoading ? '登录中...' : '登录'}
+                </Button>
+                <Button
+                  onClick={handleSkipAuth}
+                  variant="outline"
+                  className="w-full mt-2"
+                  disabled={authLoading}
+                >
+                  跳过认证 (测试其他功能)
                 </Button>
                 <div className="text-sm text-gray-500">
                   默认用户: admin / secret
@@ -557,7 +615,7 @@ export default function ApiIntegrationPage() {
             <div className="space-y-3">
               <Button
                 onClick={async () => {
-                  const result = await apiCall('/health')
+                  const result = await apiCall(fastApiConfig.endpoints.system.health)
                   if (result.success) {
                     alert('✅ FastAPI 服务运行正常')
                   } else {
@@ -571,7 +629,7 @@ export default function ApiIntegrationPage() {
 
               <Button
                 onClick={async () => {
-                  const result = await apiCall('/redis/ping')
+                  const result = await apiCall(fastApiConfig.endpoints.redis.ping)
                   if (result.success) {
                     alert('✅ Redis 连接正常')
                   } else {
