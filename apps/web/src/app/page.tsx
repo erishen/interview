@@ -1,6 +1,23 @@
+import Link from 'next/link'
+
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-xl font-bold text-gray-900">Interview Web App</h1>
+            <div className="space-x-4">
+              <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+              <Link href="/api-integration" className="text-blue-600 hover:text-blue-900 font-medium">
+                🚀 FastAPI 集成
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       <div className="container mx-auto px-4 py-16">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-6">
@@ -38,6 +55,6 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
