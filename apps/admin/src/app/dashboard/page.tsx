@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button, Card } from '@interview/ui'
+import Link from 'next/link'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -63,6 +64,11 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="flex items-center space-x-4">
+              <Link href="/api-integration">
+                <Button variant="outline">
+                  API 集成测试
+                </Button>
+              </Link>
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                   <span className="text-white font-medium text-sm">
@@ -246,6 +252,14 @@ export default function DashboardPage() {
             <Card className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
+                <Link href="/api-integration">
+                  <Button className="w-full justify-start" variant="outline">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    API 集成测试
+                  </Button>
+                </Link>
                 <Button className="w-full justify-start" variant="outline">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
