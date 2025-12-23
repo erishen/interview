@@ -18,7 +18,9 @@
     "deploy:admin": "turbo run build --filter=@interview/admin",
     "deploy:all": "turbo run build",
     "storybook": "turbo run storybook",
-    "build-storybook": "turbo run build-storybook"
+    "build-storybook": "turbo run build-storybook",
+    "kill-ports": "node scripts/kill-ports.js",
+    "clean-connections": "node scripts/clean-connections.js"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.9",

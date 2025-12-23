@@ -16,14 +16,14 @@ const users: User[] = [
   {
     id: '1',
     email: 'admin@example.com',
-    password: '$2a$12$LVvQGfIi6Br8GFlsUshWS.umYgEaT7srddOmQnEOh.b09sXiXr/m6', // "password"
+    password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
     name: 'Admin User',
     role: 'admin',
   },
   {
     id: '2',
     email: 'user@example.com',
-    password: '$2a$12$LVvQGfIi6Br8GFlsUshWS.umYgEaT7srddOmQnEOh.b09sXiXr/m6', // "password"
+    password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
     name: 'Regular User',
     role: 'user',
   },

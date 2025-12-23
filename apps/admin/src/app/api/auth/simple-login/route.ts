@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     console.log('Login attempt:', { email, password: password ? '***' : 'missing' })
 
     // Mock authentication - in production, verify against database
-    if (email === 'admin@example.com' && password === 'password') {
+    if (email === 'admin@example.com' && password === 'admin123') {
       // Create a simple session token
       const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       

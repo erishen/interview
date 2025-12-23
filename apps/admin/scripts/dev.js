@@ -3,10 +3,70 @@
 // Load environment variables
 require('dotenv').config({ path: '.env.local' })
 
-const { spawn } = require('child_process')
+const { spawn, execSync } = require('child_process')
 
-const PORT = process.env.PORT || '3003'
 const command = process.argv[2] || 'dev'
+
+// Use the specified port or default to 3003, force kill any occupying processes
+const PORT = process.env.PORT || '3003'
+
+if (isPortInUse(PORT)) {
+  console.log(`Port ${PORT} is in use, killing existing processes...`)
+  killProcessOnPort(PORT)
+
+  // Wait synchronously for port to be freed (max 5 seconds)
+  console.log(`Waiting for port ${PORT} to be freed...`)
+  let attempts = 0
+  const maxAttempts = 50 // 5 seconds with 100ms intervals
+
+  while (isPortInUse(PORT) && attempts < maxAttempts) {
+    // Wait 100ms
+    const start = Date.now()
+    while (Date.now() - start < 100) {
+      // Busy wait
+    }
+    attempts++
+  }
+
+  if (isPortInUse(PORT)) {
+    console.error(`Failed to free port ${PORT} after 5 seconds. Please check manually.`)
+    process.exit(1)
+  }
+
+  console.log(`Port ${PORT} is now available!`)
+}
+
+// Function to check if port is in use
+function isPortInUse(port) {
+  try {
+    execSync(`lsof -i:${port}`, { stdio: 'pipe' })
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
+// Function to kill process on specific port
+function killProcessOnPort(port) {
+  try {
+    const output = execSync(`lsof -ti:${port}`, { encoding: 'utf8' }).trim()
+    if (output) {
+      const pids = output.split('\n')
+      pids.forEach(pid => {
+        try {
+          process.kill(parseInt(pid), 'SIGKILL')
+          console.log(`Killed process ${pid} on port ${port}`)
+        } catch (err) {
+          console.warn(`Failed to kill process ${pid}:`, err.message)
+        }
+      })
+    }
+  } catch (err) {
+    // No process found on port, which is fine
+  }
+}
+
+// Removed findAvailablePort function - now we force kill processes on preferred port
 
 let nextCommand
 switch (command) {
@@ -23,6 +83,8 @@ switch (command) {
     console.error(`Unknown command: ${command}`)
     process.exit(1)
 }
+
+// Port handling is done above - we force kill any occupying processes
 
 console.log(`Starting Next.js on port ${PORT}...`)
 

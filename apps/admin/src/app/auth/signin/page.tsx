@@ -201,7 +201,7 @@ export default function SignInPage() {
 
         <div className="text-center">
           <p className="text-sm text-gray-600">
-            Demo credentials: admin@example.com / password
+            Demo credentials: admin@example.com / admin123
           </p>
         </div>
       </div>

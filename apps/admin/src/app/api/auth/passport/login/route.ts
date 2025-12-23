@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
-// Mock user database - generate fresh hashes for "password"
+// Mock user database - generate fresh hashes for "admin123"
 const users = [
   {
     id: '1',
     email: 'admin@example.com',
-    password: '$2a$12$LVvQGfIi6Br8GFlsUshWS.umYgEaT7srddOmQnEOh.b09sXiXr/m6', // "password"
+    password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
     name: 'Admin User',
     role: 'admin',
   },
   {
     id: '2',
     email: 'user@example.com',
-    password: '$2a$12$LVvQGfIi6Br8GFlsUshWS.umYgEaT7srddOmQnEOh.b09sXiXr/m6', // "password"
+    password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
     name: 'Regular User',
     role: 'user',
   },
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Test with plain text first (for debugging)
-    if (password === 'password') {
+    if (password === 'admin123') {
       return NextResponse.json({
         success: true,
         user: {

@@ -10,9 +10,34 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // 生成新的 CSRF Token
     const token = CSRFProtection.generateToken()
     
+    // 获取客户端IP地址
+    const getClientIP = (request: NextRequest): string => {
+      // 尝试多种方式获取IP地址
+      const forwardedFor = request.headers.get('x-forwarded-for')
+      const realIP = request.headers.get('x-real-ip')
+      const cfConnectingIP = request.headers.get('cf-connecting-ip')
+
+      // 优先级：CF-Connecting-IP > X-Real-IP > X-Forwarded-For > req.ip > localhost
+      if (cfConnectingIP) {
+        return cfConnectingIP.split(',')[0].trim()
+      }
+      if (realIP) {
+        return realIP.split(',')[0].trim()
+      }
+      if (forwardedFor) {
+        return forwardedFor.split(',')[0].trim()
+      }
+      if (request.ip) {
+        return request.ip
+      }
+
+      // 在开发环境中，如果都没有，返回开发环境的标识
+      return process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'unknown'
+    }
+
     AdminSecurityUtils.logSecurityEvent('CSRF_TOKEN_GENERATED', {
       userAgent: req.headers.get('user-agent'),
-      ip: req.ip || 'unknown'
+      ip: getClientIP(req)
     })
     
     const response = NextResponse.json({
