@@ -51,9 +51,15 @@ export async function GET(
         // 处理重定向URL，确保使用正确的协议
         let redirectUrl: string
         if (location.startsWith('http')) {
-          // 绝对URL，但可能需要修正协议
-          redirectUrl = location.replace('http://', 'https://')
+          // 绝对URL，只有外部域名才需要HTTPS
+          if (location.includes('localhost') || location.includes('127.0.0.1')) {
+            // 本地地址保持HTTP
+            redirectUrl = location
           } else {
+            // 外部地址使用HTTPS
+            redirectUrl = location.replace('http://', 'https://')
+          }
+        } else {
           // 相对URL
           redirectUrl = `${FASTAPI_BASE_URL}${location}`
         }
