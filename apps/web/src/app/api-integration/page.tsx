@@ -106,7 +106,21 @@ export default function ApiIntegrationPage() {
         } catch (e) {
           errorData = { detail: response.statusText }
         }
-        const errorMessage = errorData.detail || errorData.message || `HTTP ${response.status}: ${response.statusText}`
+        // 确保错误消息始终是字符串
+        let errorMessage: string
+        if (typeof errorData === 'string') {
+          errorMessage = errorData
+        } else if (errorData?.detail) {
+          errorMessage = typeof errorData.detail === 'string'
+            ? errorData.detail
+            : JSON.stringify(errorData.detail)
+        } else if (errorData?.message) {
+          errorMessage = typeof errorData.message === 'string'
+            ? errorData.message
+            : JSON.stringify(errorData.message)
+        } else {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        }
         addDebugLog(`❌ Error: ${errorMessage}`)
         return {
           success: false,

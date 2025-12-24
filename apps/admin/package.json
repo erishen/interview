@@ -11,6 +11,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@interview/api-client": "workspace:*",
     "@interview/ui": "workspace:*",
     "@interview/utils": "workspace:*",
     "@interview/config": "workspace:*",

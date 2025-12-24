@@ -1,4 +1,4 @@
-// Common types
+// Common types (keeping local implementation for build independence)
 export interface User {
   id: string;
   name: string;

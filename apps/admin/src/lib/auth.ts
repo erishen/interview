@@ -226,16 +226,6 @@ export const authOptions: NextAuthOptions = {
         }
       }
       return session
-    },
-    
-    async signOut({ token }) {
-      // Clean up session data from Redis on sign out (non-blocking)
-      if (token?.sub) {
-        const sessionKey = `jwt:${token.sub}`
-        redisSessionStore.delete(sessionKey).catch(err => {
-          console.warn('Failed to clean up session in Redis:', err)
-        })
-      }
     }
   },
   

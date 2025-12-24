@@ -1,7 +1,7 @@
-// Utility functions
+// UI-specific utility functions
 export { cn } from "./lib/utils";
-export { formatDate } from "./lib/date";
-export { debounce } from "./lib/debounce";
 
-// Validation
-export { validateEmail } from "./lib/validation";
+// Local utility functions (keeping for build independence)
+export { validateEmail, validatePassword, validateRequired } from "./lib/validation";
+export { formatDate, formatRelativeTime } from "./lib/date";
+export { debounce, throttle } from "./lib/debounce";

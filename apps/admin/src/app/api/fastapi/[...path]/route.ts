@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { proxyToFastApi } from '@shared/utils/proxy'
+import { proxyToFastApi } from '@/lib/proxy'
 
 export async function GET(
   request: NextRequest,

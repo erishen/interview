@@ -9,22 +9,22 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next()
   
   // 添加安全头
-  const securityHeaders = {
+  const securityHeaders: Record<string, string> = {
     // 防止点击劫持
     'X-Frame-Options': 'SAMEORIGIN',
-    
+
     // 防止 MIME 类型嗅探
     'X-Content-Type-Options': 'nosniff',
-    
+
     // XSS 防护
     'X-XSS-Protection': '1; mode=block',
-    
+
     // Referrer Policy
     'Referrer-Policy': 'same-origin',
-    
+
     // 权限策略
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    
+
     // Content Security Policy
     'Content-Security-Policy': [
       "default-src 'self'",
