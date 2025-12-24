@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withLusca } from '@/lib/lusca'
 
+// 强制动态渲染，避免静态生成错误
+export const dynamic = 'force-dynamic';
+
 /**
  * 安全测试 API 路由
  * 用于验证 Lusca 安全防护是否正常工作

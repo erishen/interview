@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { CSRFProtection } from '@/lib/lusca'
 
+// 强制动态渲染，避免静态生成错误
+export const dynamic = 'force-dynamic';
+
 /**
  * CSRF Token API 路由
  * 用于生成和验证 CSRF Token

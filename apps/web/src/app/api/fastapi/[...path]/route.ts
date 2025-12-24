@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server'
 import { proxyToFastApi } from '@/lib/proxy'
 
+// 强制动态渲染，避免静态生成错误
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
