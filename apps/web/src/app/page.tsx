@@ -10,7 +10,10 @@ export default function HomePage() {
             <h1 className="text-xl font-bold text-gray-900">Interview Web App</h1>
             <div className="space-x-4">
               <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-              <Link href="/api-integration" className="text-blue-600 hover:text-blue-900 font-medium">
+              <Link href="/docs" className="text-blue-600 hover:text-blue-900 font-medium">
+                📚 文档
+              </Link>
+              <Link href="/api-integration" className="text-gray-600 hover:text-gray-900">
                 🚀 FastAPI 集成
               </Link>
             </div>
