@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import passport from '@/lib/passport'
 
+// Mark this route as dynamic since it uses request.url
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest): Promise<Response> {
   try {
     return new Promise<Response>((resolve) => {

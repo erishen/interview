@@ -16,6 +16,7 @@
     "@interview/utils": "workspace:*",
     "@interview/config": "workspace:*",
     "@interview/types": "workspace:*",
+    "@interview/constants": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

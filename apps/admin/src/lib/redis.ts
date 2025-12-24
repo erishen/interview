@@ -8,11 +8,13 @@ interface RedisConfig {
   db?: number
   retryDelayOnFailover?: number
   enableReadyCheck?: boolean
-  maxRetriesPerRequest?: number
+  maxRetriesPerRequest?: number | null
   lazyConnect?: boolean
+  enableOfflineQueue?: boolean
 }
 
 // Default Redis configuration
+// Note: Redis is optional - if not configured, operations will gracefully fail
 const defaultConfig: RedisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
@@ -20,8 +22,9 @@ const defaultConfig: RedisConfig = {
   db: parseInt(process.env.REDIS_DB || '0'),
   retryDelayOnFailover: 100,
   enableReadyCheck: false,
-  maxRetriesPerRequest: 3,
-  lazyConnect: true
+  maxRetriesPerRequest: 3, // Default retries, will be set to null for Vercel
+  lazyConnect: true,
+  enableOfflineQueue: false, // Don't queue commands if Redis is unavailable
 }
 
 // Redis client instance
@@ -29,31 +32,57 @@ let redisClient: Redis | null = null
 
 /**
  * Get Redis client instance (singleton pattern)
+ * Uses lazy connection to avoid connecting during build time
  */
 export const getRedisClient = (): Redis => {
   if (!redisClient) {
+    // Skip Redis connection during build time or if Redis is not configured
+    const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+    const isVercel = process.env.VERCEL === '1'
+    const hasRedisConfig = process.env.REDIS_HOST || process.env.REDIS_URL
+    
+    if (isBuildTime || (isVercel && !hasRedisConfig)) {
+      // Return a mock client that won't connect
+      return new Redis({
+        ...defaultConfig,
+        lazyConnect: true,
+        enableOfflineQueue: false,
+        maxRetriesPerRequest: null as any, // Disable retries (ioredis accepts null)
+      })
+    }
+    
     redisClient = new Redis(defaultConfig)
     
-    // Handle connection events
-    redisClient.on('connect', () => {
-      console.log('Redis client connected')
-    })
-    
-    redisClient.on('ready', () => {
-      console.log('Redis client ready')
-    })
-    
-    redisClient.on('error', (err) => {
-      console.error('Redis client error:', err)
-    })
-    
-    redisClient.on('close', () => {
-      console.log('Redis client connection closed')
-    })
-    
-    redisClient.on('reconnecting', () => {
-      console.log('Redis client reconnecting')
-    })
+    // Handle connection events (only log in non-build environments)
+    if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
+      redisClient.on('connect', () => {
+        console.log('Redis client connected')
+      })
+      
+      redisClient.on('ready', () => {
+        console.log('Redis client ready')
+      })
+      
+      redisClient.on('error', (err) => {
+        // Only log errors in non-build environments and if Redis is expected to be available
+        const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+        const isVercel = process.env.VERCEL === '1'
+        const hasRedisConfig = process.env.REDIS_HOST || process.env.REDIS_URL
+        
+        // Don't log errors if Redis is intentionally not configured (e.g., Vercel)
+        if (!isBuildTime && !(isVercel && !hasRedisConfig)) {
+          console.warn('Redis client error (non-critical):', err.message)
+        }
+      })
+      
+      redisClient.on('close', () => {
+        console.log('Redis client connection closed')
+      })
+      
+      redisClient.on('reconnecting', () => {
+        console.log('Redis client reconnecting')
+      })
+    }
   }
   
   return redisClient
@@ -156,10 +185,17 @@ export class RedisCache {
    */
   async get<T>(key: string): Promise<T | null> {
     try {
+      // Skip Redis operations during build time
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return null
+      }
       const data = await this.redis.get(`${this.prefix}${key}`)
       return data ? JSON.parse(data) : null
     } catch (error) {
-      console.error('Redis cache get error:', error)
+      // Only log errors in non-build environments
+      if (process.env.NEXT_PHASE !== 'phase-production-build') {
+        console.error('Redis cache get error:', error)
+      }
       return null
     }
   }
@@ -169,6 +205,10 @@ export class RedisCache {
    */
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
     try {
+      // Skip Redis operations during build time
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return
+      }
       const serialized = JSON.stringify(value)
       if (ttl) {
         await this.redis.setex(`${this.prefix}${key}`, ttl, serialized)
@@ -176,7 +216,10 @@ export class RedisCache {
         await this.redis.set(`${this.prefix}${key}`, serialized)
       }
     } catch (error) {
-      console.error('Redis cache set error:', error)
+      // Only log errors in non-build environments
+      if (process.env.NEXT_PHASE !== 'phase-production-build') {
+        console.error('Redis cache set error:', error)
+      }
     }
   }
 
@@ -185,9 +228,16 @@ export class RedisCache {
    */
   async delete(key: string): Promise<void> {
     try {
+      // Skip Redis operations during build time
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return
+      }
       await this.redis.del(`${this.prefix}${key}`)
     } catch (error) {
-      console.error('Redis cache delete error:', error)
+      // Only log errors in non-build environments
+      if (process.env.NEXT_PHASE !== 'phase-production-build') {
+        console.error('Redis cache delete error:', error)
+      }
     }
   }
 
@@ -231,9 +281,45 @@ export class RedisCache {
   }
 }
 
-// Export default instances
-export const redisSessionStore = new RedisSessionStore()
-export const redisCache = new RedisCache()
+// Lazy initialization to avoid connecting during build time
+let _redisSessionStore: RedisSessionStore | null = null
+let _redisCache: RedisCache | null = null
+
+/**
+ * Get Redis session store instance (lazy initialization)
+ * Only creates instance when actually needed (runtime, not build time)
+ */
+export const getRedisSessionStore = (): RedisSessionStore => {
+  if (!_redisSessionStore) {
+    _redisSessionStore = new RedisSessionStore()
+  }
+  return _redisSessionStore
+}
+
+/**
+ * Get Redis cache instance (lazy initialization)
+ * Only creates instance when actually needed (runtime, not build time)
+ */
+export const getRedisCache = (): RedisCache => {
+  if (!_redisCache) {
+    _redisCache = new RedisCache()
+  }
+  return _redisCache
+}
+
+// Export default instances for backward compatibility
+// These will be lazily initialized on first access
+export const redisSessionStore = new Proxy({} as RedisSessionStore, {
+  get(target, prop) {
+    return getRedisSessionStore()[prop as keyof RedisSessionStore]
+  }
+})
+
+export const redisCache = new Proxy({} as RedisCache, {
+  get(target, prop) {
+    return getRedisCache()[prop as keyof RedisCache]
+  }
+})
 
 // Export Redis client getter for direct access
 export { getRedisClient as redis }

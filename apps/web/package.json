@@ -18,6 +18,7 @@
     "@interview/types": "workspace:*",
     "@interview/ui": "workspace:*",
     "@interview/utils": "workspace:*",
+    "@interview/constants": "workspace:*",
     "autoprefixer": "catalog:",
     "dotenv": "catalog:",
     "ioredis": "catalog:",

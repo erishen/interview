@@ -3,16 +3,15 @@
  * 使用 shared 目录中的通用工具
  */
 
-import { isEmail, isValidPassword, isPhoneNumber } from '@shared/utils/validation'
-import { USER_ROLES, VALIDATION_RULES, UserRole } from '@shared/constants'
-import { User } from '@shared/types/api'
+import { validateEmail, validatePassword } from '@interview/utils'
+import { User } from '@interview/types'
 
 export interface CreateUserData {
   email: string
   password: string
   name: string
   phone?: string
-  role?: UserRole
+  role?: string
 }
 
 export interface ValidationResult {
@@ -24,27 +23,31 @@ export function validateUserData(data: CreateUserData): ValidationResult {
   const errors: string[] = []
 
   // 验证邮箱
-  if (!isEmail(data.email)) {
+  if (!validateEmail(data.email)) {
     errors.push('邮箱格式不正确')
   }
 
   // 验证密码
-  if (!isValidPassword(data.password)) {
-    errors.push('密码至少需要8位，包含字母和数字')
+  const passwordValidation = validatePassword(data.password)
+  if (!passwordValidation.isValid) {
+    errors.push(...passwordValidation.errors)
   }
 
   // 验证姓名
-  if (!data.name || data.name.length > VALIDATION_RULES.NAME_MAX_LENGTH) {
-    errors.push(`姓名不能为空且不能超过${VALIDATION_RULES.NAME_MAX_LENGTH}个字符`)
+  if (!data.name || data.name.trim().length === 0) {
+    errors.push('姓名不能为空')
+  } else if (data.name.length > 50) {
+    errors.push('姓名不能超过50个字符')
   }
 
   // 验证手机号（如果提供）
-  if (data.phone && !isPhoneNumber(data.phone)) {
+  if (data.phone && !/^1[3-9]\d{9}$/.test(data.phone)) {
     errors.push('手机号格式不正确')
   }
 
   // 验证角色
-  if (data.role && !Object.values(USER_ROLES).includes(data.role)) {
+  const validRoles = ['admin', 'user']
+  if (data.role && !validRoles.includes(data.role)) {
     errors.push('用户角色不正确')
   }
 
@@ -60,6 +63,6 @@ export function sanitizeUserData(data: CreateUserData): CreateUserData {
     email: data.email.toLowerCase().trim(),
     name: data.name.trim(),
     phone: data.phone?.trim(),
-    role: data.role || USER_ROLES.USER
+    role: data.role || 'user'
   }
 }

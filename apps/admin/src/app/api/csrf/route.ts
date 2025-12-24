@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { CSRFProtection, AdminSecurityUtils } from '@/lib/lusca'
 
+// Mark this route as dynamic since it uses cookies and headers
+export const dynamic = 'force-dynamic'
+
 /**
  * 管理员 CSRF Token API 路由
  * 用于生成和验证 CSRF Token

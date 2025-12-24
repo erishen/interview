@@ -69,9 +69,16 @@ DB_USER=your-username
 DB_PASSWORD=your-password
 ```
 
-### Redis/Caching
+### Redis/Caching (可选)
 ```bash
-REDIS_URL=redis://localhost:6379
+# 本地开发环境（可选，但推荐）
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=redis_password
+REDIS_DB=0
+
+# Vercel 生产环境：不需要配置 Redis
+# 应用会在 Redis 不可用时自动优雅降级
 ```
 
 ## Development vs Production
@@ -81,10 +88,13 @@ REDIS_URL=redis://localhost:6379
 - Variables are automatically loaded by Next.js
 - Sensitive values are safe (file is gitignored)
 
-### Production Deployment
-- Set environment variables in your deployment platform (Vercel, Heroku, etc.)
-- Copy values from `.env.vercel` as reference
+### Production Deployment (Vercel)
+- Set environment variables in Vercel Dashboard
+- **不需要配置 Redis**: 应用会自动检测并优雅降级
+- **必需变量**: `FASTAPI_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `CSRF_SECRET`
 - Never commit actual secrets to version control
+
+**注意**: Vercel 是无服务器环境，Redis 是可选的。应用设计为可以在没有 Redis 的情况下正常运行。
 
 ## Security Best Practices
 
