@@ -24,7 +24,8 @@
       "@interview/ui": ["../../packages/ui/src"],
       "@interview/utils": ["../../packages/utils/src"],
       "@interview/config": ["../../packages/config/src"],
-      "@interview/types": ["../../packages/types/src"]
+      "@interview/types": ["../../packages/types/src"],
+      "@shared/*": ["../../shared/*"]
     }
   },
   "include": [

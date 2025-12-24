@@ -15,7 +15,7 @@ declare module 'next-auth' {
       role: string
     }
   }
-
+  
   interface User {
     id: string
     email: string
@@ -69,7 +69,7 @@ async function getUserByEmail(email: string): Promise<InternalUser | null> {
       redisCache.get(cacheKey),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 2000))
     ]).catch(() => null)
-
+    
     if (cachedUser) {
       console.log('User found in cache:', email)
       return cachedUser as InternalUser
@@ -77,10 +77,10 @@ async function getUserByEmail(email: string): Promise<InternalUser | null> {
   } catch (error) {
     console.warn('Redis cache error, continuing without cache:', error)
   }
-
+  
   // If not in cache, get from database
   const user = users.find(user => user.email === email)
-
+  
   if (user) {
     // Try to cache user data for 5 minutes (non-blocking)
     try {
@@ -91,7 +91,7 @@ async function getUserByEmail(email: string): Promise<InternalUser | null> {
       console.warn('Redis cache set error, continuing:', error)
     }
   }
-
+  
   return user || null
 }
 
