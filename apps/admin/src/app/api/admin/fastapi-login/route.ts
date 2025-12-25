@@ -90,11 +90,11 @@ export async function POST(request: NextRequest) {
     // 方法 2: 降级到使用密码登录
     console.log('[FastAPI Login] Using password login (fallback)')
     const formData = new URLSearchParams()
-    formData.append('username', process.env.ADMIN_USERNAME || 'admin')
-    formData.append('password', process.env.ADMIN_PASSWORD || 'secret')
+    formData.append('username', process.env.FASTAPI_ADMIN_USERNAME || 'admin')
+    formData.append('password', process.env.FASTAPI_ADMIN_PASSWORD || 'secret')
 
     console.log('[FastAPI Login] FASTAPI_URL:', FASTAPI_URL)
-    console.log('[FastAPI Login] Username:', process.env.ADMIN_USERNAME || 'admin')
+    console.log('[FastAPI Login] Username:', process.env.FASTAPI_ADMIN_USERNAME || 'admin')
 
     const response = await fetch(`${FASTAPI_URL}/auth/login`, {
       method: 'POST',

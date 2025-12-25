@@ -1,7 +1,53 @@
 #!/usr/bin/env node
 
-// Load environment variables
-require('dotenv').config({ path: '.env.local' })
+const fs = require('fs')
+const path = require('path')
+
+// Custom .env parser that handles bcrypt hash with $ symbols correctly
+function parseEnvFile(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8')
+  const env = {}
+
+  content.split('\n').forEach(line => {
+    // Skip comments and empty lines
+    line = line.trim()
+    if (!line || line.startsWith('#')) return
+
+    // Parse KEY=VALUE
+    const match = line.match(/^([^=]+)=(.*)$/)
+    if (match) {
+      const key = match[1].trim()
+      let value = match[2]
+
+      // Remove single quotes
+      if (value.startsWith("'") && value.endsWith("'")) {
+        value = value.slice(1, -1)
+      }
+      // Remove double quotes and unescape them
+      else if (value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1)
+        // Unescape double quotes and backslashes
+        value = value.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+        // Note: Don't expand $ variables - keep them as-is
+      }
+
+      env[key] = value
+    }
+  })
+
+  return env
+}
+
+// Load and parse .env.local
+const envPath = path.join(__dirname, '../../.env.local')
+if (fs.existsSync(envPath)) {
+  const envVars = parseEnvFile(envPath)
+  // Merge into process.env
+  Object.assign(process.env, envVars)
+}
+
+console.log('[dev.js] Environment loaded, NEXTAUTH_ADMIN_PASSWORD_HASH:',
+  process.env.NEXTAUTH_ADMIN_PASSWORD_HASH ? process.env.NEXTAUTH_ADMIN_PASSWORD_HASH.substring(0, 20) + '...' : 'not set')
 
 const { spawn, execSync } = require('child_process')
 

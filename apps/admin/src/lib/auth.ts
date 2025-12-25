@@ -52,18 +52,39 @@ interface ConfigUser {
 const getUsersFromEnv = (): ConfigUser[] => {
   const users: ConfigUser[] = []
 
+  // 修复 bcrypt hash - dotenv 可能将 $ 符号当作变量引用截断了
+  // 使用 Base64 编码存储来避免这个问题
+  let adminPasswordHash = ''
+
+  if (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH_BASE64) {
+    try {
+      adminPasswordHash = Buffer.from(process.env.NEXTAUTH_ADMIN_PASSWORD_HASH_BASE64, 'base64').toString('utf-8')
+      console.log('[Auth] Decoded bcrypt hash from BASE64')
+    } catch (err) {
+      console.error('[Auth] Failed to decode BASE64 hash:', err)
+    }
+  } else if (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH) {
+    adminPasswordHash = process.env.NEXTAUTH_ADMIN_PASSWORD_HASH
+  }
+
+  // 检测 hash 是否有效（$2a$ 或 $2b$ 开头）
+  if (adminPasswordHash && !adminPasswordHash.startsWith('$2a$') && !adminPasswordHash.startsWith('$2b$')) {
+    console.warn('⚠️  [Auth] NEXTAUTH_ADMIN_PASSWORD_HASH 无效（缺少 $2a$ 或 $2b$ 前缀）')
+    console.warn(`   当前值: ${adminPasswordHash}`)
+  }
+
   // Admin user
   console.log('[Auth] Checking admin user from env:', {
     ADMIN_EMAIL: process.env.ADMIN_EMAIL,
-    NEXTAUTH_ADMIN_PASSWORD_HASH: process.env.NEXTAUTH_ADMIN_PASSWORD_HASH,
-    NEXTAUTH_ADMIN_PASSWORD: process.env.NEXTAUTH_ADMIN_PASSWORD,
+    NEXTAUTH_ADMIN_PASSWORD_HASH: adminPasswordHash ? adminPasswordHash.substring(0, 20) + '...' : 'not set',
+    NEXTAUTH_ADMIN_PASSWORD: process.env.NEXTAUTH_ADMIN_PASSWORD ? '***' : 'not set',
   })
 
-  if (process.env.ADMIN_EMAIL && (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH || process.env.NEXTAUTH_ADMIN_PASSWORD)) {
+  if (process.env.ADMIN_EMAIL && (adminPasswordHash || process.env.NEXTAUTH_ADMIN_PASSWORD)) {
     users.push({
       id: '1',
       email: process.env.ADMIN_EMAIL,
-      password: process.env.NEXTAUTH_ADMIN_PASSWORD_HASH || process.env.NEXTAUTH_ADMIN_PASSWORD || '',
+      password: adminPasswordHash || process.env.NEXTAUTH_ADMIN_PASSWORD || '',
       name: 'Admin User',
       role: 'admin',
     })
