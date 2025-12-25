@@ -14,15 +14,35 @@ interface ConfigUser {
 const getUsersFromEnv = (): ConfigUser[] => {
   const users: ConfigUser[] = []
 
-  // Admin user
-  if (process.env.ADMIN_EMAIL && (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH || process.env.NEXTAUTH_ADMIN_PASSWORD)) {
+  // Admin user - 支持 BASE64 编码的密码 hash
+  let adminPasswordHash = ''
+
+  if (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH_BASE64) {
+    try {
+      adminPasswordHash = Buffer.from(process.env.NEXTAUTH_ADMIN_PASSWORD_HASH_BASE64, 'base64').toString('utf-8')
+      console.log('[Passport Login] Decoded bcrypt hash from BASE64')
+    } catch (err) {
+      console.error('[Passport Login] Failed to decode BASE64 hash:', err)
+    }
+  } else if (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH) {
+    adminPasswordHash = process.env.NEXTAUTH_ADMIN_PASSWORD_HASH
+  }
+
+  console.log('[Passport Login] Checking admin user from env:', {
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+    NEXTAUTH_ADMIN_PASSWORD_HASH: adminPasswordHash ? adminPasswordHash.substring(0, 20) + '...' : 'not set',
+    NEXTAUTH_ADMIN_PASSWORD: process.env.NEXTAUTH_ADMIN_PASSWORD ? '***' : 'not set',
+  })
+
+  if (process.env.ADMIN_EMAIL && (adminPasswordHash || process.env.NEXTAUTH_ADMIN_PASSWORD)) {
     users.push({
       id: '1',
       email: process.env.ADMIN_EMAIL,
-      password: process.env.NEXTAUTH_ADMIN_PASSWORD_HASH || process.env.NEXTAUTH_ADMIN_PASSWORD || '',
+      password: adminPasswordHash || process.env.NEXTAUTH_ADMIN_PASSWORD || '',
       name: 'Admin User',
       role: 'admin',
     })
+    console.log('[Passport Login] Admin user added from env')
   }
 
   // Regular user (可选）
@@ -57,6 +77,8 @@ const getUsersFromEnv = (): ConfigUser[] => {
     console.warn('⚠️  使用默认测试用户，生产环境请设置环境变量！')
   }
 
+  console.log('[Passport Login] Final users array:', users.map(u => ({ email: u.email, password: u.password.substring(0, 20) + '...' })))
+
   return users
 }
 
@@ -83,23 +105,11 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Test with plain text first (for debugging)
-    if (password === 'admin123') {
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role
-        }
-      })
-    }
-    
     // Check password with bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password)
-    
+
     if (!isPasswordValid) {
+      console.log('[Passport Login] Password validation failed for user:', email)
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }

@@ -41,7 +41,24 @@ export default function DocLogsPage() {
   const getAccessToken = async () => {
     try {
       console.log('[Doc Logs] Getting FastAPI token...')
-      const response = await fetch('/api/admin/fastapi-login', { method: 'POST' })
+
+      // 为 Passport 登录用户添加 x-auth-user header
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser)
+          headers['x-auth-user'] = JSON.stringify(user)
+          console.log('[Doc Logs] Using Passport user from localStorage:', user.email)
+        } catch (e) {
+          console.warn('[Doc Logs] Failed to parse user from localStorage:', e)
+        }
+      }
+
+      const response = await fetch('/api/admin/fastapi-login', {
+        method: 'POST',
+        headers,
+      })
       console.log('[Doc Logs] Token response status:', response.status)
 
       if (!response.ok) {

@@ -13,16 +13,9 @@ export function buildFastApiUrl(pathSegments: string[], options: FastApiUrlOptio
   const { includeQueryParams = false, request } = options
   const filteredPath = pathSegments.filter(segment => segment.length > 0)
 
-  // Special handling for endpoints that don't need trailing slash
-  const isAuthEndpoint = filteredPath[0] === 'auth'
-  const isRedisEndpoint = filteredPath[0] === 'redis'
-  // Routes with parameters (like /items/123) don't need trailing slash
-  const hasParameters = filteredPath.length > 1 && /^\d+$/.test(filteredPath[1])
-  const needsTrailingSlash = !isAuthEndpoint && !isRedisEndpoint && !hasParameters
-
-  const path = filteredPath.length > 0
-    ? filteredPath.join('/') + (needsTrailingSlash ? '/' : '')
-    : ''
+  // FastAPI 默认不需要尾部斜杠
+  // 所有路由都不需要尾部斜杠
+  const path = filteredPath.length > 0 ? filteredPath.join('/') : ''
 
   const baseUrl = `${fastApiConfig.baseUrl}/${path}`
   const queryString = includeQueryParams && request?.nextUrl?.search ? request.nextUrl.search : ''
@@ -223,15 +216,14 @@ export class FastApiClient {
   private buildUrl(pathSegments: string[], queryParams?: Record<string, string>): string {
     const filteredPath = pathSegments.filter(segment => segment.length > 0)
 
-    // Special handling for endpoints that don't need trailing slash
-    const isAuthEndpoint = filteredPath[0] === 'auth'
-    const isRedisEndpoint = filteredPath[0] === 'redis'
-    const hasParameters = filteredPath.length > 1 && /^\d+$/.test(filteredPath[1])
-    const needsTrailingSlash = !isAuthEndpoint && !isRedisEndpoint && !hasParameters
-
-    const path = filteredPath.length > 0
-      ? filteredPath.join('/') + (needsTrailingSlash ? '/' : '')
-      : ''
+    // FastAPI 默认不需要尾部斜杠
+    // 所有路由都不需要尾部斜杠，包括：
+    // - /, /health (system)
+    // - /auth (认证)
+    // - /items, /items/{id} (商品)
+    // - /redis (Redis 操作)
+    // - /api/docs, /api/docs/log, /api/docs/logs (文档日志)
+    const path = filteredPath.length > 0 ? filteredPath.join('/') : ''
 
     let url = `${this.baseUrl}/${path}`
 
