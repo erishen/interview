@@ -3,7 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { redisSessionStore, redisCache } from './redis'
+import { redisCache } from './redis'
 
 // Extend the built-in session types
 declare module 'next-auth' {
@@ -39,59 +39,87 @@ declare module 'next-auth/jwt' {
   }
 }
 
-// Mock user database - replace with your actual database
-const users = [
-  {
-    id: '1',
-    email: 'admin@example.com',
-    password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
-    name: 'Admin User',
-    role: 'admin',
-  },
-  {
-    id: '2',
-    email: 'user@example.com',
-    password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
-    name: 'Regular User',
-    role: 'user',
-  },
-]
+// User database configuration
+interface ConfigUser {
+  id: string
+  email: string
+  password: string
+  name: string
+  role: string
+}
+
+// 从环境变量获取用户配置
+const getUsersFromEnv = (): ConfigUser[] => {
+  const users: ConfigUser[] = []
+
+  // Admin user
+  console.log('[Auth] Checking admin user from env:', {
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+    NEXTAUTH_ADMIN_PASSWORD_HASH: process.env.NEXTAUTH_ADMIN_PASSWORD_HASH,
+    NEXTAUTH_ADMIN_PASSWORD: process.env.NEXTAUTH_ADMIN_PASSWORD,
+  })
+
+  if (process.env.ADMIN_EMAIL && (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH || process.env.NEXTAUTH_ADMIN_PASSWORD)) {
+    users.push({
+      id: '1',
+      email: process.env.ADMIN_EMAIL,
+      password: process.env.NEXTAUTH_ADMIN_PASSWORD_HASH || process.env.NEXTAUTH_ADMIN_PASSWORD || '',
+      name: 'Admin User',
+      role: 'admin',
+    })
+    console.log('[Auth] Admin user added from env')
+  }
+
+  // Regular user (可选）
+  if (process.env.USER_EMAIL && (process.env.USER_PASSWORD_HASH || process.env.USER_PASSWORD)) {
+    users.push({
+      id: '2',
+      email: process.env.USER_EMAIL,
+      password: process.env.USER_PASSWORD_HASH || process.env.USER_PASSWORD || '',
+      name: 'Regular User',
+      role: 'user',
+    })
+  }
+
+  // 如果没有配置环境变量，使用默认测试用户（仅开发环境）
+  const hasAdminUser = users.some(u => u.role === 'admin')
+  if (!hasAdminUser && process.env.NODE_ENV !== 'production') {
+    users.push(
+      {
+        id: '1',
+        email: 'admin@example.com',
+        password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
+        name: 'Admin User',
+        role: 'admin',
+      }
+    )
+    console.warn('⚠️  使用默认测试管理员用户，生产环境请设置环境变量！')
+  }
+
+  if (users.length === 0 && process.env.NODE_ENV !== 'production') {
+    users.push({
+      id: '2',
+      email: 'user@example.com',
+      password: '$2a$12$JgUa2JoxP20VmXCquu9zdOnSRDR.5x3TPIf0zhAM7tT2HfTwhII2q', // "admin123"
+      name: 'Regular User',
+      role: 'user',
+    })
+  }
+
+  console.log('[Auth] Final users array:', users.map(u => ({ email: u.email, password: u.password })))
+
+  return users
+}
+
+const users = getUsersFromEnv()
 
 /**
- * Get user by email with Redis caching (with timeout)
+ * Get user by email (without Redis caching for debugging)
  */
 async function getUserByEmail(email: string): Promise<InternalUser | null> {
-  const cacheKey = `user:${email}`
-
-  try {
-    // Try to get from cache first (with 2 second timeout)
-    const cachedUser = await Promise.race([
-      redisCache.get(cacheKey),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 2000))
-    ]).catch(() => null)
-    
-    if (cachedUser) {
-      console.log('User found in cache:', email)
-      return cachedUser as InternalUser
-    }
-  } catch (error) {
-    console.warn('Redis cache error, continuing without cache:', error)
-  }
-  
-  // If not in cache, get from database
+  // 直接从内存数组获取用户，不使用 Redis 缓存
   const user = users.find(user => user.email === email)
-  
-  if (user) {
-    // Try to cache user data for 5 minutes (non-blocking)
-    try {
-      redisCache.set(cacheKey, user, 300).catch(err => {
-        console.warn('Failed to cache user:', err)
-      })
-    } catch (error) {
-      console.warn('Redis cache set error, continuing:', error)
-    }
-  }
-  
+  console.log('[getUserByEmail] Looking for email:', email, 'Found:', user ? { email: user.email, password: user.password } : null)
   return user || null
 }
 
@@ -134,18 +162,24 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
+        console.log('[Authorize] Credentials received:', { email: credentials?.email, password: credentials?.password ? '***' : 'none' })
+
         if (!credentials?.email || !credentials?.password) {
+          console.log('[Authorize] Missing credentials')
           return null
         }
 
         const user = await getUserByEmail(credentials.email)
-        
+        console.log('[Authorize] User found:', user ? { email: user.email, password: user.password } : null)
+
         if (!user) {
+          console.log('[Authorize] User not found')
           return null
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-        
+        console.log('[Authorize] Password valid:', isPasswordValid)
+
         if (!isPasswordValid) {
           return null
         }
@@ -178,59 +212,67 @@ export const authOptions: NextAuthOptions = {
   
   callbacks: {
     async jwt({ token, user }) {
+      console.log('[JWT Callback] Token:', JSON.stringify(token, null, 2))
+      console.log('[JWT Callback] User:', JSON.stringify(user, null, 2))
+
       if (user) {
-        token.role = user.role
-        
-        // Store session data in Redis (non-blocking, with timeout)
-        const sessionKey = `jwt:${token.sub}`
-        try {
-          await Promise.race([
-            redisSessionStore.set(sessionKey, {
-              userId: user.id,
-              email: user.email,
-              role: user.role,
-              lastAccess: new Date().toISOString()
-            }, 30 * 24 * 60 * 60),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 3000))
-          ])
-        } catch (error) {
-          console.warn('Failed to store session in Redis:', error)
-          // Continue anyway, session will still work with JWT
+        // 用户首次登录，设置所有信息
+        token.role = user.role || 'user'
+        token.sub = user.id
+        token.email = user.email
+      } else if (token.email && !token.role) {
+        // 对于 OAuth 用户，如果 role 还没有设置，根据 email 判断
+        const adminEmails = process.env.NEXTAUTH_ADMIN_EMAILS?.split(',').map(e => e.trim()) || ['admin@example.com']
+        token.role = adminEmails.includes(token.email) ? 'admin' : 'user'
+        console.log('[JWT Callback] OAuth user role set to:', token.role, 'for email:', token.email)
+
+        // 如果没有 id，从 email 生成一个
+        if (!token.sub) {
+          token.sub = Buffer.from(token.email).toString('base64')
         }
       }
+
       return token
     },
-    
+
     async session({ session, token }) {
-      if (token && session.user) {
+      console.log('[Session Callback] Token:', JSON.stringify(token, null, 2))
+      console.log('[Session Callback] Session (before):', JSON.stringify(session, null, 2))
+      if (token) {
         session.user.id = token.sub || ''
         session.user.role = token.role || 'user'
-        
-        // Update last access time in Redis (non-blocking)
-        const sessionKey = `jwt:${token.sub}`
-        try {
-          const sessionData = await Promise.race([
-            redisSessionStore.get(sessionKey),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 2000))
-          ]).catch(() => null)
-          
-          if (sessionData) {
-            sessionData.lastAccess = new Date().toISOString()
-            redisSessionStore.set(sessionKey, sessionData, 30 * 24 * 60 * 60).catch(err => {
-              console.warn('Failed to update session in Redis:', err)
-            })
-          }
-        } catch (error) {
-          console.warn('Failed to access session in Redis:', error)
-          // Continue anyway, session will still work
+        if (token.email) {
+          session.user.email = token.email
         }
       }
+      console.log('[Session Callback] Session (after):', JSON.stringify(session, null, 2))
       return session
     }
   },
-  
+
   events: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
+      // For OAuth providers, set id and role
+      if (account?.provider === 'google' || account?.provider === 'github') {
+        const adminEmails = process.env.NEXTAUTH_ADMIN_EMAILS?.split(',').map(e => e.trim()) || ['admin@example.com']
+
+        // Set role based on email
+        user.role = adminEmails.includes(user.email || '') ? 'admin' : 'user'
+
+        // Generate a consistent ID for OAuth users
+        if (!user.id && user.email) {
+          user.id = Buffer.from(user.email).toString('base64')
+        }
+
+        console.log('[Sign In Event] OAuth user:', {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          provider: account.provider
+        })
+      }
+
       // Log sign-in events to Redis (non-blocking)
       const eventKey = `event:signin:${user.id}:${Date.now()}`
       redisCache.set(eventKey, {

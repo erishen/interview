@@ -52,7 +52,7 @@ export function buildHeaders(
       headers['Content-Type'] = contentType
     }
   } else {
-    // 非严格模式：转发更多头
+    // 非严格模式：转发更多头，包括所有自定义头
     const contentType = options.headers?.['content-type'] || options.headers?.['Content-Type']
     if (contentType) {
       headers['Content-Type'] = contentType
@@ -61,6 +61,20 @@ export function buildHeaders(
     const userAgent = options.headers?.['user-agent'] || options.headers?.['User-Agent']
     if (userAgent) {
       headers['User-Agent'] = userAgent
+    }
+
+    // 转发所有其他自定义头（如 X-API-Key, X-User-Id, X-User-Email 等）
+    if (options.headers) {
+      for (const [key, value] of Object.entries(options.headers)) {
+        // 跳过已处理的头
+        if (
+          !['authorization', 'Authorization'].includes(key) &&
+          !['content-type', 'Content-Type'].includes(key) &&
+          !['user-agent', 'User-Agent'].includes(key)
+        ) {
+          headers[key] = value
+        }
+      }
     }
   }
 

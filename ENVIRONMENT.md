@@ -76,10 +76,13 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=redis_password
 REDIS_DB=0
-
-# Vercel 生产环境：不需要配置 Redis
-# 应用会在 Redis 不可用时自动优雅降级
 ```
+
+**Vercel 生产环境说明：**
+- ✅ **无需配置 Redis** - 应用会自动检测并优雅降级
+- ✅ 所有核心功能正常工作（登录、会话、CSRF 保护）
+- ✅ 非核心缓存功能（登录日志、安全事件）会被静默跳过
+- ⚠️ 如需在 Vercel 使用 Redis，需要配置 Upstash 等外部 Redis 服务
 
 ## Development vs Production
 

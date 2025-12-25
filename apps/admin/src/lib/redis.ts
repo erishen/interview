@@ -1,30 +1,21 @@
 import Redis from 'ioredis'
 
-// Redis configuration interface
-interface RedisConfig {
-  host: string
-  port: number
-  password?: string
-  db?: number
-  retryDelayOnFailover?: number
-  enableReadyCheck?: boolean
-  maxRetriesPerRequest?: number | null
-  lazyConnect?: boolean
-  enableOfflineQueue?: boolean
-}
-
-// Default Redis configuration
-// Note: Redis is optional - if not configured, operations will gracefully fail
-const defaultConfig: RedisConfig = {
+// Get Redis configuration from environment
+const getRedisConfig = (): { host: string; port: number; password: string | undefined; db: number } => ({
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
   password: process.env.REDIS_PASSWORD || undefined,
   db: parseInt(process.env.REDIS_DB || '0'),
-  retryDelayOnFailover: 100,
-  enableReadyCheck: false,
-  maxRetriesPerRequest: 3, // Default retries, will be set to null for Vercel
-  lazyConnect: true,
-  enableOfflineQueue: false, // Don't queue commands if Redis is unavailable
+})
+
+// Check if Redis should be used (not in build or Vercel without Redis)
+const shouldUseRedis = (): boolean => {
+  const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
+  const isVercel = process.env.VERCEL === '1'
+  const hasRedisConfig = process.env.REDIS_HOST || process.env.REDIS_URL
+
+  // Don't use Redis during build or in Vercel without explicit Redis config
+  return !isBuildTime && !(isVercel && !hasRedisConfig)
 }
 
 // Redis client instance
@@ -40,19 +31,56 @@ export const getRedisClient = (): Redis => {
     const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
     const isVercel = process.env.VERCEL === '1'
     const hasRedisConfig = process.env.REDIS_HOST || process.env.REDIS_URL
-    
+
     if (isBuildTime || (isVercel && !hasRedisConfig)) {
       // Return a mock client that won't connect
+      const mockConfig = getRedisConfig()
       return new Redis({
-        ...defaultConfig,
+        host: mockConfig.host,
+        port: mockConfig.port,
+        password: mockConfig.password,
+        db: mockConfig.db,
         lazyConnect: true,
         enableOfflineQueue: false,
         maxRetriesPerRequest: null as any, // Disable retries (ioredis accepts null)
       })
     }
-    
-    redisClient = new Redis(defaultConfig)
-    
+
+    // Create Redis client with authentication
+    const config = getRedisConfig()
+
+    console.log('[Redis] Environment variables:', {
+      REDIS_HOST: process.env.REDIS_HOST,
+      REDIS_PORT: process.env.REDIS_PORT,
+      REDIS_PASSWORD: process.env.REDIS_PASSWORD,
+      REDIS_DB: process.env.REDIS_DB,
+    })
+
+    redisClient = new Redis({
+      host: config.host,
+      port: config.port,
+      password: config.password,
+      db: config.db,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+      enableOfflineQueue: true,
+      connectTimeout: 10000,
+      retryStrategy: (times) => {
+        if (times > 3) {
+          return null // Stop retrying after 3 attempts
+        }
+        return Math.min(times * 100, 3000) // Exponential backoff
+      },
+    })
+
+    // Add detailed logging for debugging
+    console.log('[Redis] Connecting with config:', {
+      host: config.host,
+      port: config.port,
+      password: config.password ? '***' : 'none',
+      db: config.db
+    })
+
     // Handle connection events (only log in non-build environments)
     if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
       redisClient.on('connect', () => {

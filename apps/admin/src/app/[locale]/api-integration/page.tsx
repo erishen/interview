@@ -181,11 +181,6 @@ export default function ApiIntegrationPage() {
     setAuthLoading(false)
   }
 
-  const handleSkipAuth = () => {
-    setToken('skipped-auth')
-    alert('已跳过认证，您可以测试其他API功能了！')
-  }
-
   const handleGetUserInfo = async () => {
     setAuthLoading(true)
     const result = await apiCall<UserInfo>('/auth/me')
@@ -405,25 +400,12 @@ export default function ApiIntegrationPage() {
                 >
                   {authLoading ? '登录中...' : '登录'}
                 </Button>
-                <Button
-                  onClick={handleSkipAuth}
-                  variant="outline"
-                  className="w-full mt-2"
-                  disabled={authLoading}
-                >
-                  跳过认证 (测试其他功能)
-                </Button>
-                <div className="text-sm text-gray-500">
-                  默认用户: admin / secret
-                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="bg-green-50 p-3 rounded">
                   <div className="text-green-800 font-medium">✅ 已登录</div>
-                  <div className="text-green-600 text-sm mt-1">
-                    Token: {token.substring(0, 20)}...
-                  </div>
+                  {/* 不显示 token，避免安全泄露 */}
                 </div>
 
                 {userInfo && (

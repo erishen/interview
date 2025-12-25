@@ -1,0 +1,60 @@
+{
+  "dashboard": {
+    "title": "Admin Dashboard",
+    "authMethod": {
+      "nextauth": "NextAuth.js",
+      "passport": "Passport.js"
+    },
+    "welcome": "欢迎回来，{name}！",
+    "subtitle": "今天的管理面板概览。",
+    "authenticatedVia": "认证方式：",
+    "authInfo": {
+      "title": "认证方法：{method}",
+      "nextauth": "您当前使用 NextAuth.js 登录，具有 JWT 会话管理功能。",
+      "passport": "您当前使用 Passport.js 登录，具有自定义会话管理功能。",
+      "features": "特性：",
+      "nextauthFeatures": [
+        "基于 JWT 的会话",
+        "内置 OAuth 提供商",
+        "自动 CSRF 保护",
+        "TypeScript 支持"
+      ],
+      "passportFeatures": [
+        "灵活的认证策略",
+        "自定义会话管理",
+        "中间件支持",
+        "基于策略的认证"
+      ]
+    },
+    "stats": {
+      "totalUsers": "总用户数",
+      "revenue": "收入",
+      "performance": "性能",
+      "orders": "订单数"
+    },
+    "activity": {
+      "title": "最近活动",
+      "actions": {
+        "userRegistered": "用户注册",
+        "orderCompleted": "订单完成",
+        "paymentProcessed": "支付处理",
+        "userUpdatedProfile": "用户更新资料"
+      }
+    },
+    "quickActions": {
+      "title": "快捷操作",
+      "docLogs": "文档日志",
+      "docsEditor": "文档编辑器",
+      "apiIntegration": "API 集成测试",
+      "addNewUser": "添加新用户",
+      "generateReport": "生成报告",
+      "systemSettings": "系统设置",
+      "supportCenter": "支持中心"
+    },
+    "header": {
+      "signOut": "退出登录",
+      "language": "语言"
+    },
+    "loading": "加载中..."
+  }
+}

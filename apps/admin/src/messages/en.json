@@ -1,0 +1,60 @@
+{
+  "dashboard": {
+    "title": "Admin Dashboard",
+    "authMethod": {
+      "nextauth": "NextAuth.js",
+      "passport": "Passport.js"
+    },
+    "welcome": "Welcome back, {name}!",
+    "subtitle": "Here's what's happening with your admin panel today.",
+    "authenticatedVia": "Authenticated via:",
+    "authInfo": {
+      "title": "Authentication Method: {method}",
+      "nextauth": "You are currently signed in using NextAuth.js with JWT session management.",
+      "passport": "You are currently signed in using Passport.js with custom session management.",
+      "features": "Features:",
+      "nextauthFeatures": [
+        "JWT-based sessions",
+        "Built-in OAuth providers",
+        "Automatic CSRF protection",
+        "TypeScript support"
+      ],
+      "passportFeatures": [
+        "Flexible authentication strategies",
+        "Custom session management",
+        "Middleware support",
+        "Strategy-based authentication"
+      ]
+    },
+    "stats": {
+      "totalUsers": "Total Users",
+      "revenue": "Revenue",
+      "performance": "Performance",
+      "orders": "Orders"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "actions": {
+        "userRegistered": "User registered",
+        "orderCompleted": "Order completed",
+        "paymentProcessed": "Payment processed",
+        "userUpdatedProfile": "User updated profile"
+      }
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "docLogs": "Document Logs",
+      "docsEditor": "Docs Editor",
+      "apiIntegration": "API Integration",
+      "addNewUser": "Add New User",
+      "generateReport": "Generate Report",
+      "systemSettings": "System Settings",
+      "supportCenter": "Support Center"
+    },
+    "header": {
+      "signOut": "Sign Out",
+      "language": "Language"
+    },
+    "loading": "Loading..."
+  }
+}

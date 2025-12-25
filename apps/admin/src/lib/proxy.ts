@@ -30,7 +30,17 @@ export async function proxyToFastApi(
       ? new (await import('@interview/api-client')).FastApiClient({ enableRedirectHandling: true })
       : fastApiClient
 
-    const headers = buildHeaders({ headers: Object.fromEntries(request.headers.entries()) }, strictHeaders)
+    // 添加文档日志 API Key
+    const headers: Record<string, string> = {
+      ...Object.fromEntries(request.headers.entries()),
+    }
+    
+    // 从环境变量读取 DOC_LOG_API_KEY 并添加到请求头
+    if (process.env.DOC_LOG_API_KEY) {
+      headers['X-API-Key'] = process.env.DOC_LOG_API_KEY
+    }
+
+    const proxyHeaders = buildHeaders({ headers }, strictHeaders)
 
     let response: any
 

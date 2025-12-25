@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { getDocBySlug } from '@/lib/docs';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 
-export default function DocDetailPage({ params }: { params: { slug: string } }) {
-  const content = getDocBySlug(params.slug);
+export default async function DocDetailPage({ params }: { params: { slug: string } }) {
+  const content = await getDocBySlug(params.slug);
 
   if (!content) {
     return (
@@ -48,9 +48,6 @@ export default function DocDetailPage({ params }: { params: { slug: string } }) 
               <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
               <Link href="/docs" className="text-blue-600 hover:text-blue-900 font-medium">
                 📚 文档
-              </Link>
-              <Link href="/api-integration" className="text-gray-600 hover:text-gray-900">
-                🚀 FastAPI 集成
               </Link>
             </div>
           </div>

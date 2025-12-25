@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { getAllDocs, type Doc } from '@/lib/docs';
 
-export default function DocsPage() {
-  const docs = getAllDocs();
+export default async function DocsPage() {
+  const docs = await getAllDocs();
 
   // Group docs by category based on title
   const coreDocs = docs.filter(doc => ['frontend', 'frontend-extended'].includes(doc.slug));
   const algorithmDocs = docs.filter(doc => ['dynamic-programming', 'min-path-sum-explained', 'frontend-algorithms-practical'].includes(doc.slug));
-  const otherDocs = docs.filter(doc => 
+  const otherDocs = docs.filter(doc =>
     !['frontend', 'frontend-extended', 'dynamic-programming', 'min-path-sum-explained', 'frontend-algorithms-practical'].includes(doc.slug)
   );
 
@@ -39,12 +39,9 @@ export default function DocsPage() {
           <div className="flex justify-between items-center py-4">
             <h1 className="text-xl font-bold text-gray-900">Interview Web App</h1>
             <div className="space-x-4">
-              <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
-              <Link href="/docs" className="text-blue-600 hover:text-blue-900 font-medium">
+              <Link href="/" className="text-blue-600 hover:text-blue-900 font-medium">Home</Link>
+              <Link href="/docs" className="text-gray-600 hover:text-gray-900">
                 📚 文档
-              </Link>
-              <Link href="/api-integration" className="text-gray-600 hover:text-gray-900">
-                🚀 FastAPI 集成
               </Link>
             </div>
           </div>

@@ -199,11 +199,31 @@ export default function SignInPage() {
           )}
         </Card>
 
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            Demo credentials: admin@example.com / admin123
-          </p>
-        </div>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-center mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-sm text-gray-700">
+              <strong>开发环境演示账号：</strong>
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              • Email: admin@example.com<br />
+              • Password: admin123
+            </p>
+            <p className="text-xs text-red-600 mt-2">
+              ⚠️ 此功能仅限开发环境，生产环境已禁用
+            </p>
+          </div>
+        )}
+
+        {process.env.NODE_ENV !== 'development' && (
+          <div className="text-center mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+            <p className="text-sm text-gray-700">
+              <strong>登录提示：</strong>
+            </p>
+            <p className="text-sm text-gray-600 mt-2">
+              请使用已授权的管理员账号登录
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
