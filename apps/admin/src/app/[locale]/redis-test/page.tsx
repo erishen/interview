@@ -53,7 +53,6 @@ export default function RedisTestPage() {
       timestamp: new Date().toISOString()
     }
     setDebugInfo(debug)
-    console.log('Session debug info:', debug)
   }, [session, status, simpleSession])
 
   const checkSimpleSession = async () => {

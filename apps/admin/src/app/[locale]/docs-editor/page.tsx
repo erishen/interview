@@ -41,9 +41,6 @@ export default function DocEditorPage() {
 
   // 检查登录状态
   useEffect(() => {
-    console.log('[Docs Editor] NextAuth Status:', status, 'Session:', session)
-    console.log('[Docs Editor] Passport User:', passportUser)
-    console.log('[Docs Editor] Is Authenticated:', isAuthenticated)
     if (!isAuthenticated) {
       router.push('/auth/signin')
     }
@@ -51,7 +48,6 @@ export default function DocEditorPage() {
 
   // 加载文档列表
   const loadDocs = async () => {
-    console.log('[Docs Editor] Loading docs...')
     setLoading(true)
     try {
       const response = await fetch('/api/admin/docs', {
@@ -61,9 +57,7 @@ export default function DocEditorPage() {
           ...getAuthHeaders(),
         },
       })
-      console.log('[Docs Editor] Response status:', response.status)
       const data = await response.json()
-      console.log('[Docs Editor] Response data:', data)
       if (data.success) {
         setDocs(data.docs)
       } else if (response.status === 401) {
@@ -173,7 +167,6 @@ export default function DocEditorPage() {
 
   // 只在登录后才加载文档
   useEffect(() => {
-    console.log('[Docs Editor] Authentication changed, loading docs if authenticated:', isAuthenticated)
     if (isAuthenticated) {
       loadDocs()
     }

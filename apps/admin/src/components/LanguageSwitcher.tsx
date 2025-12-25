@@ -10,14 +10,8 @@ export function LanguageSwitcher() {
     const currentPathname = window.location.pathname;
     const targetLocale = locale === 'zh' ? 'en' : 'zh';
 
-    console.log('Current pathname:', currentPathname);
-    console.log('Current locale:', locale);
-    console.log('Target locale:', targetLocale);
-
     // 移除旧的语言前缀，添加新的语言前缀
     const newPathname = currentPathname.replace(/\/(en|zh)/, `/${targetLocale}`);
-
-    console.log('New pathname:', newPathname);
 
     // 手动跳转到新的 URL
     window.location.href = newPathname;

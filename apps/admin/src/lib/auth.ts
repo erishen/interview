@@ -59,7 +59,6 @@ const getUsersFromEnv = (): ConfigUser[] => {
   if (process.env.NEXTAUTH_ADMIN_PASSWORD_HASH_BASE64) {
     try {
       adminPasswordHash = Buffer.from(process.env.NEXTAUTH_ADMIN_PASSWORD_HASH_BASE64, 'base64').toString('utf-8')
-      console.log('[Auth] Decoded bcrypt hash from BASE64')
     } catch (err) {
       console.error('[Auth] Failed to decode BASE64 hash:', err)
     }
@@ -74,12 +73,6 @@ const getUsersFromEnv = (): ConfigUser[] => {
   }
 
   // Admin user
-  console.log('[Auth] Checking admin user from env:', {
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
-    NEXTAUTH_ADMIN_PASSWORD_HASH: adminPasswordHash ? adminPasswordHash.substring(0, 20) + '...' : 'not set',
-    NEXTAUTH_ADMIN_PASSWORD: process.env.NEXTAUTH_ADMIN_PASSWORD ? '***' : 'not set',
-  })
-
   if (process.env.ADMIN_EMAIL && (adminPasswordHash || process.env.NEXTAUTH_ADMIN_PASSWORD)) {
     users.push({
       id: '1',
@@ -88,7 +81,6 @@ const getUsersFromEnv = (): ConfigUser[] => {
       name: 'Admin User',
       role: 'admin',
     })
-    console.log('[Auth] Admin user added from env')
   }
 
   // Regular user (可选）
@@ -114,7 +106,6 @@ const getUsersFromEnv = (): ConfigUser[] => {
         role: 'admin',
       }
     )
-    console.warn('⚠️  使用默认测试管理员用户，生产环境请设置环境变量！')
   }
 
   if (users.length === 0 && process.env.NODE_ENV !== 'production') {
@@ -127,8 +118,6 @@ const getUsersFromEnv = (): ConfigUser[] => {
     })
   }
 
-  console.log('[Auth] Final users array:', users.map(u => ({ email: u.email, password: u.password })))
-
   return users
 }
 
@@ -140,7 +129,6 @@ const users = getUsersFromEnv()
 async function getUserByEmail(email: string): Promise<InternalUser | null> {
   // 直接从内存数组获取用户，不使用 Redis 缓存
   const user = users.find(user => user.email === email)
-  console.log('[getUserByEmail] Looking for email:', email, 'Found:', user ? { email: user.email, password: user.password } : null)
   return user || null
 }
 
@@ -183,24 +171,16 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        console.log('[Authorize] Credentials received:', { email: credentials?.email, password: credentials?.password ? '***' : 'none' })
-
         if (!credentials?.email || !credentials?.password) {
-          console.log('[Authorize] Missing credentials')
           return null
         }
 
         const user = await getUserByEmail(credentials.email)
-        console.log('[Authorize] User found:', user ? { email: user.email, password: user.password } : null)
-
         if (!user) {
-          console.log('[Authorize] User not found')
           return null
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password)
-        console.log('[Authorize] Password valid:', isPasswordValid)
-
         if (!isPasswordValid) {
           return null
         }
@@ -233,9 +213,6 @@ export const authOptions: NextAuthOptions = {
   
   callbacks: {
     async jwt({ token, user }) {
-      console.log('[JWT Callback] Token:', JSON.stringify(token, null, 2))
-      console.log('[JWT Callback] User:', JSON.stringify(user, null, 2))
-
       if (user) {
         // 用户首次登录，设置所有信息
         token.role = user.role || 'user'
@@ -245,7 +222,6 @@ export const authOptions: NextAuthOptions = {
         // 对于 OAuth 用户，如果 role 还没有设置，根据 email 判断
         const adminEmails = process.env.NEXTAUTH_ADMIN_EMAILS?.split(',').map(e => e.trim()) || ['admin@example.com']
         token.role = adminEmails.includes(token.email) ? 'admin' : 'user'
-        console.log('[JWT Callback] OAuth user role set to:', token.role, 'for email:', token.email)
 
         // 如果没有 id，从 email 生成一个
         if (!token.sub) {
@@ -257,8 +233,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      console.log('[Session Callback] Token:', JSON.stringify(token, null, 2))
-      console.log('[Session Callback] Session (before):', JSON.stringify(session, null, 2))
       if (token) {
         session.user.id = token.sub || ''
         session.user.role = token.role || 'user'
@@ -266,7 +240,6 @@ export const authOptions: NextAuthOptions = {
           session.user.email = token.email
         }
       }
-      console.log('[Session Callback] Session (after):', JSON.stringify(session, null, 2))
       return session
     }
   },
@@ -284,14 +257,6 @@ export const authOptions: NextAuthOptions = {
         if (!user.id && user.email) {
           user.id = Buffer.from(user.email).toString('base64')
         }
-
-        console.log('[Sign In Event] OAuth user:', {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          provider: account.provider
-        })
       }
 
       // Log sign-in events to Redis (non-blocking)

@@ -27,7 +27,6 @@ async function verifyAuth(request: NextRequest) {
   // 1. 尝试 NextAuth session
   const session = await getServerSession(authOptions)
   if (session) {
-    console.log('[Docs API] NextAuth session found:', session.user?.email)
     return { user: session.user, authMethod: 'nextauth' }
   }
 
@@ -36,7 +35,6 @@ async function verifyAuth(request: NextRequest) {
   const userEmail = request.headers.get('X-User-Email')
 
   if (userId && userEmail) {
-    console.log('[Docs API] Passport user found:', userEmail)
     return {
       user: {
         id: userId,
@@ -47,7 +45,6 @@ async function verifyAuth(request: NextRequest) {
     }
   }
 
-  console.log('[Docs API] No session found')
   return null
 }
 

@@ -115,7 +115,15 @@ export function withLusca(handler: (req: NextRequest) => Promise<NextResponse>) 
  * CSRF Token 生成和验证工具
  */
 export class CSRFProtection {
-  private static readonly SECRET = process.env.CSRF_SECRET || 'admin-csrf-secret'
+  private static readonly SECRET = process.env.CSRF_SECRET || this.generateSecureRandom(32)
+
+  /**
+   * 生成安全的随机字符串（用于 CSRF secret）
+   */
+  private static generateSecureRandom(length: number = 32): string {
+    const crypto = require('crypto')
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length)
+  }
   
   /**
    * 生成 CSRF Token

@@ -49,13 +49,6 @@ export const getRedisClient = (): Redis => {
     // Create Redis client with authentication
     const config = getRedisConfig()
 
-    console.log('[Redis] Environment variables:', {
-      REDIS_HOST: process.env.REDIS_HOST,
-      REDIS_PORT: process.env.REDIS_PORT,
-      REDIS_PASSWORD: process.env.REDIS_PASSWORD,
-      REDIS_DB: process.env.REDIS_DB,
-    })
-
     redisClient = new Redis({
       host: config.host,
       port: config.port,
@@ -73,42 +66,34 @@ export const getRedisClient = (): Redis => {
       },
     })
 
-    // Add detailed logging for debugging
-    console.log('[Redis] Connecting with config:', {
-      host: config.host,
-      port: config.port,
-      password: config.password ? '***' : 'none',
-      db: config.db
-    })
-
     // Handle connection events (only log in non-build environments)
     if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
       redisClient.on('connect', () => {
-        console.log('Redis client connected')
+        // Redis client connected
       })
-      
+
       redisClient.on('ready', () => {
-        console.log('Redis client ready')
+        // Redis client ready
       })
-      
+
       redisClient.on('error', (err) => {
         // Only log errors in non-build environments and if Redis is expected to be available
         const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
         const isVercel = process.env.VERCEL === '1'
         const hasRedisConfig = process.env.REDIS_HOST || process.env.REDIS_URL
-        
+
         // Don't log errors if Redis is intentionally not configured (e.g., Vercel)
         if (!isBuildTime && !(isVercel && !hasRedisConfig)) {
           console.warn('Redis client error (non-critical):', err.message)
         }
       })
-      
+
       redisClient.on('close', () => {
-        console.log('Redis client connection closed')
+        // Redis client connection closed
       })
-      
+
       redisClient.on('reconnecting', () => {
-        console.log('Redis client reconnecting')
+        // Redis client reconnecting
       })
     }
   }

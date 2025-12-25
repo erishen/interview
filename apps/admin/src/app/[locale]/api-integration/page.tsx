@@ -165,7 +165,6 @@ export default function ApiIntegrationPage() {
     })
 
     if (result.success) {
-      console.log('Login successful:', result.data)
       setToken(result.data!.access_token)
       setLoginForm({ username: '', password: '' })
       alert('登录成功！')
@@ -195,9 +194,6 @@ export default function ApiIntegrationPage() {
   // ============ 商品管理功能 ============
 
   const loadItems = async () => {
-    console.log('loadItems called, token present:', !!token)
-    console.log('token value:', token?.substring(0, 50) + '...')
-
     if (!token) {
       alert('请先登录后再加载商品列表')
       return
@@ -205,10 +201,8 @@ export default function ApiIntegrationPage() {
 
     setItemsLoading(true)
     const endpoint = fastApiConfig.endpoints.items.list.replace(/\/$/, '')
-    console.log('Calling endpoint:', endpoint)
 
     const result = await apiCall<Item[]>(endpoint)
-    console.log('API call result:', result)
 
     if (result.success) {
       setItems(result.data!)

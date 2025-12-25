@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
   try {
     // 方法 1: 检查 NextAuth session
     const session = await getServerSession(authOptions)
-    console.log('[FastAPI Login] NextAuth Session:', JSON.stringify(session, null, 2))
 
     let authUser: AuthUser | null = null
 
@@ -43,7 +42,6 @@ export async function POST(request: NextRequest) {
     // 方法 2: 检查请求头中的用户信息（用于 Passport 登录）
     if (!authUser) {
       const userHeader = request.headers.get('x-auth-user')
-      console.log('[FastAPI Login] User from header:', userHeader)
       if (userHeader) {
         try {
           authUser = JSON.parse(userHeader)
@@ -58,7 +56,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 只有 admin 角色才能获取 FastAPI token
-    console.log('[FastAPI Login] User role:', authUser.role)
     if (authUser.role !== 'admin') {
       return NextResponse.json({ error: `Forbidden - User role: ${authUser.role}` }, { status: 403 })
     }
@@ -66,8 +63,6 @@ export async function POST(request: NextRequest) {
     // 方法 1: 尝试使用 NextAuth token 获取 FastAPI token
     const nextAuthToken = await getNextAuthToken(request)
     if (nextAuthToken) {
-      console.log('[FastAPI Login] Using NextAuth token')
-
       const response = await fetch(`${FASTAPI_URL}/auth/token-from-nextauth`, {
         method: 'POST',
         headers: {
@@ -82,19 +77,23 @@ export async function POST(request: NextRequest) {
           access_token: data.access_token,
           token_type: data.token_type,
         })
-      } else {
-        console.warn('[FastAPI Login] Failed to use NextAuth token, fallback to password')
       }
     }
 
     // 方法 2: 降级到使用密码登录
-    console.log('[FastAPI Login] Using password login (fallback)')
     const formData = new URLSearchParams()
     formData.append('username', process.env.FASTAPI_ADMIN_USERNAME || 'admin')
-    formData.append('password', process.env.FASTAPI_ADMIN_PASSWORD || 'secret')
 
-    console.log('[FastAPI Login] FASTAPI_URL:', FASTAPI_URL)
-    console.log('[FastAPI Login] Username:', process.env.FASTAPI_ADMIN_USERNAME || 'admin')
+    // 支持 BASE64 编码的密码
+    let fastApiPassword = ''
+    if (process.env.FASTAPI_ADMIN_PASSWORD_BASE64) {
+      try {
+        fastApiPassword = Buffer.from(process.env.FASTAPI_ADMIN_PASSWORD_BASE64, 'base64').toString('utf-8')
+      } catch (err) {
+        console.error('[FastAPI Login] Failed to decode BASE64 password:', err)
+      }
+    }
+    formData.append('password', fastApiPassword || process.env.FASTAPI_ADMIN_PASSWORD || 'secret')
 
     const response = await fetch(`${FASTAPI_URL}/auth/login`, {
       method: 'POST',
@@ -103,8 +102,6 @@ export async function POST(request: NextRequest) {
     })
 
     const responseText = await response.text()
-    console.log('[FastAPI Login] Response status:', response.status)
-    console.log('[FastAPI Login] Response body:', responseText)
 
     if (!response.ok) {
       return NextResponse.json({
