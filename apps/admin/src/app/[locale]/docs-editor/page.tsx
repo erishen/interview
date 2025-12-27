@@ -13,6 +13,7 @@ interface Doc {
   content?: string
   created_at?: string
   updated_at?: string
+  fileName?: string // 用于回收站的唯一标识
 }
 
 interface DocVersion {
@@ -456,9 +457,9 @@ export default function DocEditorPage() {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-2">
-                      {docs.map((doc) => (
+                      {docs.map((doc, index) => (
                         <div
-                          key={doc.slug}
+                          key={showTrash ? `${doc.slug}-${index}` : doc.slug}
                           className={`p-4 rounded-lg border transition-all group hover:shadow-md ${
                             selectedDoc?.slug === doc.slug
                               ? 'bg-blue-50 border-blue-300 shadow-md'
