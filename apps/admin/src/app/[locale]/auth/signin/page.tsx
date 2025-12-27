@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCSRFContext } from '@/contexts/CSRFContext'
@@ -16,8 +16,12 @@ export default function SignInPage() {
   const [error, setError] = useState('')
   const [useNextAuth, setUseNextAuth] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login } = useAuth()
   const { csrfToken, loading: csrfLoading } = useCSRFContext()
+
+  // 获取登录后重定向地址
+  const redirectUrl = searchParams.get('redirect') || '/dashboard'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +40,7 @@ export default function SignInPage() {
         if (result?.error) {
           setError(result.error)
         } else if (result?.ok) {
-          router.push('/dashboard')
+          router.push(redirectUrl)
         }
       } else {
         // 不再等待 CSRF token，直接使用（如果加载失败会使用 fallback）
@@ -59,7 +63,7 @@ export default function SignInPage() {
         if (response.ok && data.success) {
           // Use AuthContext to store user info
           login(data.user)
-          router.push('/dashboard')
+          router.push(redirectUrl)
         } else {
           setError(data.error || 'Invalid credentials')
         }
@@ -73,11 +77,11 @@ export default function SignInPage() {
   }
 
   const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/dashboard' })
+    signIn('google', { callbackUrl: redirectUrl })
   }
 
   const handleGitHubSignIn = () => {
-    signIn('github', { callbackUrl: '/dashboard' })
+    signIn('github', { callbackUrl: redirectUrl })
   }
 
   return (

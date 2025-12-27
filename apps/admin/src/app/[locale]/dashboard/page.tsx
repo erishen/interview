@@ -74,11 +74,6 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/api-integration">
-                <Button variant="outline" className="bg-white/10 hover:bg-white/20 border-white/20 text-white">
-                  {t('quickActions.apiIntegration')}
-                </Button>
-              </Link>
               <LanguageSwitcher />
               <div className="flex items-center space-x-2">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
@@ -270,7 +265,7 @@ export default function DashboardPage() {
                   </Button>
                 </Link>
                 <Link href="/api-integration" className="block">
-                  <Button className="w-full justify-start bg-white/10 hover:bg-white/20 border-white/20 text-white hover:text-green-300 hover:border-green-500/50 transition-all duration-300" variant="outline">
+                  <Button className="w-full justify-start bg-white/10 hover:bg-white/20 border-white/20 text-white hover:text-indigo-300 hover:border-indigo-500/50 transition-all duration-300" variant="outline">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>

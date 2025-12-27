@@ -21,7 +21,7 @@ export interface ApiResponse<T = any> {
   data: T
   status: number
   statusText: string
-  headers: Record<string, string>
+  headers: Record<string, string | string[]>
 }
 
 export interface ApiError {
@@ -37,6 +37,7 @@ export interface ApiError {
 export interface FastApiOptions extends ApiClientOptions {
   enableRedirectHandling?: boolean
   strictHeaders?: boolean
+  cookieString?: string  // Cookie string for server-side cookie forwarding
 }
 
 /**

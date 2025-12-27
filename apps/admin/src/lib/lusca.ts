@@ -118,41 +118,64 @@ export class CSRFProtection {
   private static readonly SECRET = process.env.CSRF_SECRET || this.generateSecureRandom(32)
 
   /**
-   * 生成安全的随机字符串（用于 CSRF secret）
+   * 使用 crypto 生成安全的随机字符串
    */
   private static generateSecureRandom(length: number = 32): string {
     const crypto = require('crypto')
     return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length)
   }
-  
+
   /**
-   * 生成 CSRF Token
+   * 使用 HMAC 生成安全的 CSRF Token
    */
   static generateToken(): string {
+    const crypto = require('crypto')
     const timestamp = Date.now().toString()
-    const randomBytes = Math.random().toString(36).substring(2)
-    return Buffer.from(`${timestamp}:${randomBytes}:${this.SECRET}`).toString('base64')
+    const randomBytes = crypto.randomBytes(16).toString('hex')
+
+    // 使用 HMAC 签名，防止伪造
+    const hmac = crypto.createHmac('sha256', this.SECRET)
+    hmac.update(`${timestamp}:${randomBytes}`)
+    const signature = hmac.digest('hex')
+
+    // 格式: timestamp:randomBytes:signature
+    return Buffer.from(`${timestamp}:${randomBytes}:${signature}`).toString('base64')
   }
-  
+
   /**
    * 验证 CSRF Token
    */
   static validateToken(token: string): boolean {
     try {
+      const crypto = require('crypto')
       const decoded = Buffer.from(token, 'base64').toString('utf-8')
-      const [timestamp, randomBytes, secret] = decoded.split(':')
-      
-      // 检查密钥
-      if (secret !== this.SECRET) {
+      const parts = decoded.split(':')
+
+      if (parts.length !== 3) {
         return false
       }
-      
-      // 检查时间戳（1小时内有效）
+
+      const [timestamp, randomBytes, signature] = parts
+
+      // 验证时间戳（1小时内有效）
       const tokenTime = parseInt(timestamp, 10)
       const currentTime = Date.now()
       const oneHour = 60 * 60 * 1000
-      
-      return (currentTime - tokenTime) < oneHour
+
+      if (isNaN(tokenTime) || (currentTime - tokenTime) >= oneHour) {
+        return false
+      }
+
+      // 使用 HMAC 验证签名
+      const hmac = crypto.createHmac('sha256', this.SECRET)
+      hmac.update(`${timestamp}:${randomBytes}`)
+      const expectedSignature = hmac.digest('hex')
+
+      // 使用恒定时间比较，防止时序攻击
+      return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature)
+      )
     } catch {
       return false
     }
@@ -164,23 +187,65 @@ export class CSRFProtection {
  */
 export const AdminSecurityUtils = {
   /**
-   * 清理 XSS 攻击的字符串
+   * 清理 XSS 攻击的字符串（改进版）
    */
   sanitizeInput(input: string): string {
+    if (typeof input !== 'string') {
+      return ''
+    }
+
     return input
       .replace(/[<>]/g, '') // 移除尖括号
       .replace(/javascript:/gi, '') // 移除 javascript: 协议
       .replace(/on\w+=/gi, '') // 移除事件处理器
+      .replace(/data:/gi, '') // 移除 data: 协议
+      .replace(/vbscript:/gi, '') // 移除 vbscript: 协议
+      .replace(/&lt;/g, '<') // 恢复 HTML 实体（如果需要）
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, '/')
       .trim()
   },
-  
+
+  /**
+   * 验证邮箱格式
+   */
+  validateEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  },
+
+  /**
+   * 验证密码强度
+   */
+  validatePasswordStrength(password: string): { valid: boolean; message?: string } {
+    if (!password || password.length < 8) {
+      return { valid: false, message: 'Password must be at least 8 characters' }
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one uppercase letter' }
+    }
+
+    if (!/[a-z]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one lowercase letter' }
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one number' }
+    }
+
+    return { valid: true }
+  },
+
   /**
    * 验证管理员权限
    */
   validateAdminAccess(userRole: string): boolean {
     return ['admin', 'super_admin'].includes(userRole)
   },
-  
+
   /**
    * 验证 URL 是否安全
    */
@@ -192,26 +257,65 @@ export const AdminSecurityUtils = {
       return false
     }
   },
-  
+
   /**
-   * 生成安全的随机字符串
+   * 使用 crypto 生成安全的随机字符串
    */
   generateSecureRandom(length: number = 32): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = ''
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return result
+    const crypto = require('crypto')
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length)
   },
-  
+
   /**
-   * 记录安全事件
+   * 记录安全事件（改进版 - 生产环境不记录敏感信息）
    */
   logSecurityEvent(event: string, details: any) {
-    console.log(`[ADMIN SECURITY] ${event}:`, {
-      timestamp: new Date().toISOString(),
-      ...details
-    })
+    const isDev = process.env.NODE_ENV === 'development'
+
+    if (isDev) {
+      console.log(`[ADMIN SECURITY] ${event}:`, {
+        timestamp: new Date().toISOString(),
+        ...details,
+      })
+    } else {
+      // 生产环境只记录关键信息，避免泄露敏感数据
+      const safeDetails = {
+        timestamp: new Date().toISOString(),
+        eventType: event,
+        // 根据事件类型选择记录的字段
+        ...(event === 'SECURITY_CHECK' && {
+          ip: details.ip,
+          userAgent: details.userAgent?.substring(0, 100), // 限制长度
+        }),
+        ...(event === 'INPUT_SANITIZATION' && {
+          inputLength: details.original?.length || 0,
+          sanitizedLength: details.sanitized?.length || 0,
+        }),
+        ...(event === 'UNAUTHORIZED_ADMIN_ACCESS' && {
+          userRole: details.userRole,
+        }),
+      }
+      console.log(`[ADMIN SECURITY] ${event}:`, safeDetails)
+    }
+  },
+
+  /**
+   * 获取客户端 IP 地址
+   */
+  getClientIp(request: Request): string {
+    return (
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      request.headers.get('cf-connecting-ip') ||
+      'unknown'
+    )
+  },
+
+  /**
+   * 获取安全的用户代理字符串（限制长度）
+   */
+  getSafeUserAgent(request: Request): string {
+    const userAgent = request.headers.get('user-agent') || ''
+    return userAgent.substring(0, 200)
   },
 }

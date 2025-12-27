@@ -99,36 +99,67 @@ export function withLusca(handler: (req: NextRequest) => Promise<NextResponse>) 
  * CSRF Token 生成和验证工具
  */
 export class CSRFProtection {
-  private static readonly SECRET = process.env.CSRF_SECRET || 'default-csrf-secret'
-  
+  private static readonly SECRET = process.env.CSRF_SECRET || this.generateSecureRandom(32)
+
   /**
-   * 生成 CSRF Token
+   * 使用 crypto 生成安全的随机字符串
+   */
+  private static generateSecureRandom(length: number = 32): string {
+    const crypto = require('crypto')
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length)
+  }
+
+  /**
+   * 使用 HMAC 生成安全的 CSRF Token
    */
   static generateToken(): string {
+    const crypto = require('crypto')
     const timestamp = Date.now().toString()
-    const randomBytes = Math.random().toString(36).substring(2)
-    return Buffer.from(`${timestamp}:${randomBytes}:${this.SECRET}`).toString('base64')
+    const randomBytes = crypto.randomBytes(16).toString('hex')
+
+    // 使用 HMAC 签名，防止伪造
+    const hmac = crypto.createHmac('sha256', this.SECRET)
+    hmac.update(`${timestamp}:${randomBytes}`)
+    const signature = hmac.digest('hex')
+
+    // 格式: timestamp:randomBytes:signature
+    return Buffer.from(`${timestamp}:${randomBytes}:${signature}`).toString('base64')
   }
-  
+
   /**
    * 验证 CSRF Token
    */
   static validateToken(token: string): boolean {
     try {
+      const crypto = require('crypto')
       const decoded = Buffer.from(token, 'base64').toString('utf-8')
-      const [timestamp, randomBytes, secret] = decoded.split(':')
-      
-      // 检查密钥
-      if (secret !== this.SECRET) {
+      const parts = decoded.split(':')
+
+      if (parts.length !== 3) {
         return false
       }
-      
-      // 检查时间戳（1小时内有效）
+
+      const [timestamp, randomBytes, signature] = parts
+
+      // 验证时间戳（1小时内有效）
       const tokenTime = parseInt(timestamp, 10)
       const currentTime = Date.now()
       const oneHour = 60 * 60 * 1000
-      
-      return (currentTime - tokenTime) < oneHour
+
+      if (isNaN(tokenTime) || (currentTime - tokenTime) >= oneHour) {
+        return false
+      }
+
+      // 使用 HMAC 验证签名
+      const hmac = crypto.createHmac('sha256', this.SECRET)
+      hmac.update(`${timestamp}:${randomBytes}`)
+      const expectedSignature = hmac.digest('hex')
+
+      // 使用恒定时间比较，防止时序攻击
+      return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature)
+      )
     } catch {
       return false
     }
@@ -140,16 +171,35 @@ export class CSRFProtection {
  */
 export const SecurityUtils = {
   /**
-   * 清理 XSS 攻击的字符串
+   * 清理 XSS 攻击的字符串（改进版）
    */
   sanitizeInput(input: string): string {
+    if (typeof input !== 'string') {
+      return ''
+    }
+
     return input
       .replace(/[<>]/g, '') // 移除尖括号
       .replace(/javascript:/gi, '') // 移除 javascript: 协议
       .replace(/on\w+=/gi, '') // 移除事件处理器
+      .replace(/data:/gi, '') // 移除 data: 协议
+      .replace(/vbscript:/gi, '') // 移除 vbscript: 协议
+      .replace(/&lt;/g, '<') // 恢复 HTML 实体（如果需要）
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, '/')
       .trim()
   },
-  
+
+  /**
+   * 验证邮箱格式
+   */
+  validateEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  },
+
   /**
    * 验证 URL 是否安全
    */
@@ -161,16 +211,12 @@ export const SecurityUtils = {
       return false
     }
   },
-  
+
   /**
-   * 生成安全的随机字符串
+   * 使用 crypto 生成安全的随机字符串
    */
   generateSecureRandom(length: number = 32): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = ''
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return result
+    const crypto = require('crypto')
+    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length)
   },
 }

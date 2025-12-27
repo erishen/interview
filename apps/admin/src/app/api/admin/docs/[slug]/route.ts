@@ -5,8 +5,41 @@ import fs from 'fs'
 import path from 'path'
 
 const DOCS_DIR = path.join(process.cwd(), '../../docs')
-const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8081'
-const DOC_LOG_API_KEY = process.env.DOC_LOG_API_KEY || ''
+const TRASH_DIR = path.join(DOCS_DIR, '.trash')
+const VERSIONS_DIR = path.join(DOCS_DIR, '.versions')
+
+// 确保回收站目录存在
+if (!fs.existsSync(TRASH_DIR)) {
+  fs.mkdirSync(TRASH_DIR, { recursive: true })
+}
+
+// 确保版本目录存在
+if (!fs.existsSync(VERSIONS_DIR)) {
+  fs.mkdirSync(VERSIONS_DIR, { recursive: true })
+}
+
+// 安全验证：检查 slug 格式，防止路径遍历攻击
+function isValidSlug(slug: string): { valid: boolean; error?: string } {
+  // 长度限制
+  if (slug.length === 0) return { valid: false, error: 'Slug 不能为空' }
+  if (slug.length > 100) return { valid: false, error: 'Slug 不能超过 100 个字符' }
+
+  // 格式限制：只允许小写字母、数字、连字符和下划线
+  const validPattern = /^[a-z0-9_-]+$/i
+  if (!validPattern.test(slug)) {
+    return { valid: false, error: 'Slug 只能包含小写字母、数字、连字符(-)和下划线(_)' }
+  }
+
+  // 防止路径遍历攻击
+  const dangerousPatterns = ['..', '/', '\\', '\0', '\n', '\r']
+  for (const pattern of dangerousPatterns) {
+    if (slug.includes(pattern)) {
+      return { valid: false, error: 'Slug 包含非法字符' }
+    }
+  }
+
+  return { valid: true }
+}
 
 // CORS headers
 function setCorsHeaders(response: NextResponse) {
@@ -57,15 +90,12 @@ async function logDocAction(
   if (!authResult?.user) return
 
   try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    // 如果配置了 API Key，添加到请求头
-    if (DOC_LOG_API_KEY) {
-      headers['X-API-Key'] = DOC_LOG_API_KEY
-    }
+    // 构建完整 URL（服务器端需要完整 URL）
+    const baseUrl = process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3003}`
 
-    await fetch(`${FASTAPI_URL}/api/docs/log`, {
+    const response = await fetch(`${baseUrl}/api/fastapi/api/docs/log`, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action,
         doc_slug: docSlug,
@@ -74,11 +104,63 @@ async function logDocAction(
         user_name: authResult.user.name || '',
         auth_method: authResult.authMethod,
       }),
-    }).catch(err => {
-      console.warn('[Docs API] Failed to log action:', err)
     })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.warn('[Docs API] Log action failed:', response.status, errorText)
+    }
   } catch (error) {
+    // 静默失败，不影响文档操作
     console.warn('[Docs API] Error logging action:', error)
+  }
+}
+
+// 保存文档版本
+async function saveVersion(
+  slug: string,
+  content: string,
+  message: string,
+  user: any
+) {
+  try {
+    const versionId = Date.now().toString()
+    const docVersionDir = path.join(VERSIONS_DIR, slug)
+
+    // 确保文档版本目录存在
+    if (!fs.existsSync(docVersionDir)) {
+      fs.mkdirSync(docVersionDir, { recursive: true })
+    }
+
+    const versionData = {
+      id: versionId,
+      doc_slug: slug,
+      content: content,
+      message: message,
+      author: user.name || user.email || 'Unknown',
+      created_at: new Date().toISOString(),
+    }
+
+    const versionPath = path.join(docVersionDir, `${versionId}.json`)
+    fs.writeFileSync(versionPath, JSON.stringify(versionData, null, 2), 'utf-8')
+
+    console.log('[Version Control] Saved version:', versionId, 'for doc:', slug)
+
+    // 限制版本数量：只保留最近50个版本
+    const versionFiles = fs.readdirSync(docVersionDir)
+      .filter(file => file.endsWith('.json'))
+      .sort()
+
+    if (versionFiles.length > 50) {
+      // 删除最旧的版本
+      const filesToDelete = versionFiles.slice(0, versionFiles.length - 50)
+      for (const file of filesToDelete) {
+        fs.unlinkSync(path.join(docVersionDir, file))
+      }
+      console.log('[Version Control] Cleaned up old versions, kept latest 50')
+    }
+  } catch (error) {
+    console.error('[Version Control] Error saving version:', error)
   }
 }
 
@@ -95,18 +177,29 @@ export async function GET(
 
   try {
     const { slug } = params
-    const filePath = path.join(DOCS_DIR, `${slug}.md`)
+
+    // 验证 slug 格式
+    const slugValidation = isValidSlug(slug)
+    if (!slugValidation.valid) {
+      return NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 })
+    }
+
+    // 规范化路径，防止路径遍历
+    const filePath = path.normalize(path.join(DOCS_DIR, `${slug}.md`))
+    if (!filePath.startsWith(path.normalize(DOCS_DIR))) {
+      return NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 })
+    }
 
     if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 })
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
     }
 
     const content = fs.readFileSync(filePath, 'utf-8')
-    
+
     // 提取标题和描述
     const titleMatch = content.match(/^#\s+(.+)$/m)
     const title = titleMatch ? titleMatch[1] : slug
-    
+
     const descMatch = content.match(/^> (.+)$/m)
     const description = descMatch ? descMatch[1] : undefined
 
@@ -136,18 +229,33 @@ export async function PUT(
 
   try {
     const { slug } = params
-    const { content } = await request.json()
+    const { content, message = '更新文档' } = await request.json()
 
     if (!content) {
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 }))
     }
 
-    const filePath = path.join(DOCS_DIR, `${slug}.md`)
+    // 验证 slug 格式
+    const slugValidation = isValidSlug(slug)
+    if (!slugValidation.valid) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 }))
+    }
+
+    // 规范化路径，防止路径遍历
+    const filePath = path.normalize(path.join(DOCS_DIR, `${slug}.md`))
+    if (!filePath.startsWith(path.normalize(DOCS_DIR))) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
+    }
 
     if (!fs.existsSync(filePath)) {
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
     }
 
+    // 在更新前保存当前版本
+    const currentContent = fs.readFileSync(filePath, 'utf-8')
+    await saveVersion(slug, currentContent, message, session.user)
+
+    // 更新文档
     fs.writeFileSync(filePath, content, 'utf-8')
 
     // 记录操作日志（异步，不等待结果）
@@ -171,19 +279,80 @@ export async function DELETE(
 
   try {
     const { slug } = params
-    const filePath = path.join(DOCS_DIR, `${slug}.md`)
 
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 })
+    // 验证 slug 格式
+    const slugValidation = isValidSlug(slug)
+    if (!slugValidation.valid) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 }))
     }
 
-    fs.unlinkSync(filePath)
+    // 规范化路径，防止路径遍历
+    const filePath = path.normalize(path.join(DOCS_DIR, `${slug}.md`))
+    if (!filePath.startsWith(path.normalize(DOCS_DIR))) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+    }
+
+    // 软删除：移动到回收站
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const trashFileName = `${slug}_${timestamp}.md`
+    const trashPath = path.join(TRASH_DIR, trashFileName)
+
+    fs.renameSync(filePath, trashPath)
 
     // 记录操作日志（异步，不等待结果）
     logDocAction('delete', slug, session)
 
-    return setCorsHeaders(NextResponse.json({ success: true, message: 'Document deleted' }))
+    return setCorsHeaders(NextResponse.json({ success: true, message: 'Document moved to trash' }))
   } catch (error) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to delete document' }, { status: 500 }))
+  }
+}
+
+// 恢复文档（从回收站移回）
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { slug: string } }
+) {
+  const session = await verifyAuth(request)
+  if (!session) {
+    return setCorsHeaders(NextResponse.json({ success: false, error: 'Unauthorized - Please login first' }, { status: 401 }))
+  }
+
+  try {
+    const { slug } = params
+    const { action } = await request.json()
+
+    if (action !== 'restore') {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }))
+    }
+
+    // 查找回收站中的文件
+    const trashFiles = fs.readdirSync(TRASH_DIR)
+    console.log('[Restore] Looking for slug:', slug)
+    console.log('[Restore] Available trash files:', trashFiles)
+    const trashFile = trashFiles.find(f => f.startsWith(`${slug}_`))
+    console.log('[Restore] Found trash file:', trashFile)
+
+    if (!trashFile) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found in trash' }, { status: 404 }))
+    }
+
+    const trashPath = path.join(TRASH_DIR, trashFile)
+    const restorePath = path.join(DOCS_DIR, `${slug}.md`)
+
+    // 检查目标文件是否已存在
+    if (fs.existsSync(restorePath)) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document already exists' }, { status: 409 }))
+    }
+
+    fs.renameSync(trashPath, restorePath)
+
+    return setCorsHeaders(NextResponse.json({ success: true, message: 'Document restored' }))
+  } catch (error) {
+    return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to restore document' }, { status: 500 }))
   }
 }

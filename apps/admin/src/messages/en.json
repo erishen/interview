@@ -45,7 +45,7 @@
       "title": "Quick Actions",
       "docLogs": "Document Logs",
       "docsEditor": "Docs Editor",
-      "apiIntegration": "API Integration",
+      "apiIntegration": "FastAPI Service Integration",
       "addNewUser": "Add New User",
       "generateReport": "Generate Report",
       "systemSettings": "System Settings",

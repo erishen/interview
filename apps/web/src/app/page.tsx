@@ -1,6 +1,14 @@
 import Link from 'next/link'
 import ProductsDisplay from '@/components/ProductsDisplay'
 
+function getHostAndPort(urlStr: string): string {
+  const url = new URL(urlStr)
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    return url.hostname + ':' + (url.port || '80')
+  }
+  return url.hostname
+}
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -45,11 +53,15 @@ export default function HomePage() {
               href={`${process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'}/docs-editor`}
               target="_blank"
               rel="noopener noreferrer"
+              title="文档编辑器（需要登录）"
               className="inline-flex items-center px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow hover:shadow-lg"
             >
-              管理后台
-              <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="mr-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              管理后台
+              <svg className="ml-2 w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 1 1 0 002 0zm-1 8a1 1 0 102 0 1 1 0 01-2zm0-4a1 1 0 102 0 1 1 0 01-2z" clipRule="evenodd" />
               </svg>
             </a>
           </div>
@@ -143,11 +155,11 @@ export default function HomePage() {
             Built with ❤️ using Next.js, TypeScript, and FastAPI
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-6 text-sm text-gray-500">
-            <span>Web App: <a href={process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'} className="text-blue-600 hover:underline">{new URL(process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000').port || '3000'}</a></span>
+            <span>Web App: <a href={process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000')}</a></span>
             <span>|</span>
-            <span>Admin App: <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'} className="text-blue-600 hover:underline">{new URL(process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003').port || '3003'}</a></span>
+            <span>Admin App: <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003')}</a></span>
             <span>|</span>
-            <span>FastAPI: <a href={process.env.FASTAPI_URL || 'http://localhost:8081'} className="text-blue-600 hover:underline">{new URL(process.env.FASTAPI_URL || 'http://localhost:8081').port || '8081'}</a></span>
+            <span>FastAPI: <a href={process.env.FASTAPI_URL || 'http://localhost:8081'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.FASTAPI_URL || 'http://localhost:8081')}</a></span>
           </div>
         </div>
       </footer>

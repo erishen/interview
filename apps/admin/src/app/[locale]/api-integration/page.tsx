@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button, Input, Card } from '@interview/ui'
 import { fastApiConfig } from '@interview/config'
+import Link from 'next/link'
 
 // FastAPI 服务配置 - 使用代理 API 避免 CORS 问题
 const FASTAPI_BASE_URL = '/api/fastapi/'
@@ -44,7 +45,8 @@ interface RedisStats {
 }
 
 export default function ApiIntegrationPage() {
-  // 认证状态
+  // 认证状态 - 纯内存状态（刷新后需要重新登录）
+  // 注意：如需刷新后保持登录，请配置后端使用 httpOnly cookie
   const [token, setToken] = useState<string>('')
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [authLoading, setAuthLoading] = useState(false)
@@ -77,6 +79,79 @@ export default function ApiIntegrationPage() {
     setDebugLogs(prev => [...prev.slice(-9), `[${timestamp}] ${message}`]) // 保留最后10条日志
   }
 
+  // 输入清理和验证函数 - 防止 XSS 攻击
+  const sanitizeInput = (input: string, maxLength?: number): string => {
+    // 限制长度
+    if (maxLength && input.length > maxLength) {
+      input = input.substring(0, maxLength)
+    }
+
+    // 移除危险字符
+    return input
+      .replace(/[<>]/g, '') // 移除 < 和 > 标签
+      .replace(/javascript:/gi, '') // 移除 javascript: 协议
+      .replace(/on\w+=/gi, '') // 移除事件处理器
+      .trim()
+  }
+
+  // 验证商品数据
+  const validateItemData = (data: {
+    name: string
+    description: string
+    price: string
+    category: string
+  }): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = []
+
+    // 验证名称
+    if (!data.name || data.name.trim().length === 0) {
+      errors.push('商品名称不能为空')
+    } else if (data.name.length > 100) {
+      errors.push('商品名称不能超过100个字符')
+    }
+
+    // 验证价格
+    const priceNum = parseFloat(data.price)
+    if (!data.price || isNaN(priceNum)) {
+      errors.push('价格必须是有效数字')
+    } else if (priceNum < 0) {
+      errors.push('价格不能为负数')
+    } else if (priceNum > 999999) {
+      errors.push('价格不能超过999999')
+    }
+
+    // 验证描述
+    if (data.description && data.description.length > 500) {
+      errors.push('描述不能超过500个字符')
+    }
+
+    // 验证分类
+    if (data.category && data.category.length > 50) {
+      errors.push('分类不能超过50个字符')
+    }
+
+    return { isValid: errors.length === 0, errors }
+  }
+
+  // 验证 Redis 键值
+  const validateRedisData = (key: string, value: string): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = []
+
+    if (!key || key.trim().length === 0) {
+      errors.push('键名不能为空')
+    } else if (key.length > 200) {
+      errors.push('键名不能超过200个字符')
+    }
+
+    if (!value || value.trim().length === 0) {
+      errors.push('值不能为空')
+    } else if (value.length > 10000) {
+      errors.push('值不能超过10000个字符')
+    }
+
+    return { isValid: errors.length === 0, errors }
+  }
+
   // 通用 API 调用函数
   const apiCall = async <T = any>(
     endpoint: string,
@@ -90,8 +165,8 @@ export default function ApiIntegrationPage() {
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` }),
           ...options.headers,
+          // 注意：不添加 Authorization header，让浏览器自动发送 cookie
         },
         credentials: 'include', // 确保发送 cookies
         ...options,
@@ -144,10 +219,24 @@ export default function ApiIntegrationPage() {
   // ============ 认证功能 ============
 
   const handleLogin = async () => {
+    // 验证登录表单
     if (!loginForm.username || !loginForm.password) {
       alert('请输入用户名和密码')
       return
     }
+
+    if (loginForm.username.length < 3 || loginForm.username.length > 50) {
+      alert('用户名长度必须在 3-50 个字符之间')
+      return
+    }
+
+    if (loginForm.password.length < 6) {
+      alert('密码长度至少为 6 个字符')
+      return
+    }
+
+    // 清理用户名（不清理密码）
+    const sanitizedUsername = sanitizeInput(loginForm.username, 50)
 
     setAuthLoading(true)
 
@@ -159,13 +248,17 @@ export default function ApiIntegrationPage() {
       },
       body: new URLSearchParams({
         grant_type: 'password',
-        username: loginForm.username,
+        username: sanitizedUsername,
         password: loginForm.password,
       }).toString(),
     })
 
     if (result.success) {
-      setToken(result.data!.access_token)
+      // 登录成功，后端已设置 cookie
+      // 获取用户信息
+      await handleGetUserInfo(true)
+      // 设置一个标志 token 表示已登录
+      setToken('authenticated')
       setLoginForm({ username: '', password: '' })
       alert('登录成功！')
     } else {
@@ -180,25 +273,36 @@ export default function ApiIntegrationPage() {
     setAuthLoading(false)
   }
 
-  const handleGetUserInfo = async () => {
+  const handleGetUserInfo = async (silent = false) => {
     setAuthLoading(true)
     const result = await apiCall<UserInfo>('/auth/me')
     if (result.success) {
       setUserInfo(result.data!)
-    } else {
+    } else if (!silent) {
       alert(`获取用户信息失败: ${result.error}`)
     }
     setAuthLoading(false)
   }
 
+  const handleLogout = async () => {
+    try {
+      // 调用后端登出接口，清除 cookie
+      await apiCall('/auth/logout', { method: 'POST' })
+    } catch (error) {
+      console.error('登出失败:', error)
+    } finally {
+      // 清除前端状态
+      setToken('')
+      setUserInfo(null)
+      setItems([])
+      setRedisStats(null)
+      setRedisKeys([])
+    }
+  }
+
   // ============ 商品管理功能 ============
 
   const loadItems = async () => {
-    if (!token) {
-      alert('请先登录后再加载商品列表')
-      return
-    }
-
     setItemsLoading(true)
     const endpoint = fastApiConfig.endpoints.items.list.replace(/\/$/, '')
 
@@ -213,41 +317,79 @@ export default function ApiIntegrationPage() {
   }
 
   const handleCreateItem = async () => {
-    if (!token) {
-      alert('请先登录后再创建商品')
+    // 验证输入数据
+    const validation = validateItemData(itemForm)
+    if (!validation.isValid) {
+      alert('输入验证失败:\n' + validation.errors.join('\n'))
       return
     }
 
-    if (!itemForm.name || !itemForm.price) {
-      alert('请输入商品名称和价格')
-      return
+    // 清理输入数据
+    const sanitizedData = {
+      name: sanitizeInput(itemForm.name, 100),
+      description: sanitizeInput(itemForm.description, 500),
+      price: itemForm.price,
+      category: sanitizeInput(itemForm.category, 50)
     }
 
-    const result = await apiCall<Item>(fastApiConfig.endpoints.items.create, {
-      method: 'POST',
-      body: JSON.stringify({
-        name: itemForm.name,
-        description: itemForm.description,
-        price: parseFloat(itemForm.price),
-        category: itemForm.category,
-      }),
-    })
+    // 如果有选中的商品，则是更新操作
+    if (selectedItem) {
+      const result = await apiCall<Item>(`${fastApiConfig.endpoints.items.update}${selectedItem.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: sanitizedData.name,
+          description: sanitizedData.description,
+          price: parseFloat(sanitizedData.price),
+          category: sanitizedData.category,
+        }),
+      })
 
-    if (result.success) {
-      setItemForm({ name: '', description: '', price: '', category: '' })
-      loadItems() // 重新加载商品列表
-      alert('商品创建成功！')
+      if (result.success) {
+        setItemForm({ name: '', description: '', price: '', category: '' })
+        setSelectedItem(null)
+        loadItems()
+        alert('商品更新成功！')
+      } else {
+        alert(`更新商品失败: ${result.error}`)
+      }
     } else {
-      alert(`创建商品失败: ${result.error}`)
+      // 否则是创建操作
+      const result = await apiCall<Item>(fastApiConfig.endpoints.items.create, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: sanitizedData.name,
+          description: sanitizedData.description,
+          price: parseFloat(sanitizedData.price),
+          category: sanitizedData.category,
+        }),
+      })
+
+      if (result.success) {
+        setItemForm({ name: '', description: '', price: '', category: '' })
+        loadItems()
+        alert('商品创建成功！')
+      } else {
+        alert(`创建商品失败: ${result.error}`)
+      }
     }
   }
 
-  const handleDeleteItem = async (itemId: number) => {
-    if (!token) {
-      alert('请先登录后再删除商品')
-      return
-    }
+  const handleEditItem = (item: Item) => {
+    setSelectedItem(item)
+    setItemForm({
+      name: item.name,
+      description: item.description || '',
+      price: item.price.toString(),
+      category: item.category || ''
+    })
+  }
 
+  const handleCancelEdit = () => {
+    setSelectedItem(null)
+    setItemForm({ name: '', description: '', price: '', category: '' })
+  }
+
+  const handleDeleteItem = async (itemId: number) => {
     if (!confirm('确定要删除这个商品吗？')) return
 
     const result = await apiCall(`${fastApiConfig.endpoints.items.update}${itemId}`, {
@@ -265,11 +407,6 @@ export default function ApiIntegrationPage() {
   // ============ Redis 管理功能 ============
 
   const loadRedisStats = async () => {
-    if (!token) {
-      alert('请先登录后再查看 Redis 统计')
-      return
-    }
-
     setRedisLoading(true)
     // 暂时跳过Redis认证问题，使用跳过认证的标记
     const result = await apiCall<RedisStats>(fastApiConfig.endpoints.redis.stats)
@@ -282,11 +419,6 @@ export default function ApiIntegrationPage() {
   }
 
   const loadRedisKeys = async () => {
-    if (!token) {
-      alert('请先登录后再查看 Redis 键')
-      return
-    }
-
     setRedisLoading(true)
     const result = await apiCall<string[]>(fastApiConfig.endpoints.redis.keys)
     if (result.success) {
@@ -298,21 +430,22 @@ export default function ApiIntegrationPage() {
   }
 
   const handleSetRedisValue = async () => {
-    if (!token) {
-      alert('请先登录后再设置 Redis 值')
+    // 验证输入数据
+    const validation = validateRedisData(redisKey, redisValue)
+    if (!validation.isValid) {
+      alert('输入验证失败:\n' + validation.errors.join('\n'))
       return
     }
 
-    if (!redisKey || !redisValue) {
-      alert('请输入键和值')
-      return
-    }
+    // 清理输入数据
+    const sanitizedKey = sanitizeInput(redisKey, 200)
+    const sanitizedValue = sanitizeInput(redisValue, 10000)
 
     const result = await apiCall(fastApiConfig.endpoints.redis.set, {
       method: 'POST',
       body: JSON.stringify({
-        key: redisKey,
-        value: redisValue,
+        key: sanitizedKey,
+        value: sanitizedValue,
         expire: 300, // 5分钟过期
       }),
     })
@@ -327,7 +460,28 @@ export default function ApiIntegrationPage() {
     }
   }
 
-  // 初始化加载
+  // 页面加载时检查是否已通过 cookie 认证
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        // 尝试调用 /auth/me 接口，如果成功说明有 cookie
+        const result = await apiCall<UserInfo>('/auth/me')
+        if (result.success && result.data) {
+          // 已通过 cookie 认证，设置登录状态
+          setUserInfo(result.data)
+          // 设置一个标志 token 表示已登录（虽然实际认证是通过 cookie）
+          setToken('authenticated')
+        }
+      } catch (error) {
+        // 未登录，忽略错误
+        console.log('未通过 cookie 认证')
+      }
+    }
+
+    checkAuthStatus()
+  }, []) // 只在组件挂载时执行一次
+
+  // 当 token 变化时自动加载数据
   useEffect(() => {
     if (token) {
       loadItems()
@@ -340,10 +494,17 @@ export default function ApiIntegrationPage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">FastAPI 服务集成</h1>
-          <p className="mt-2 text-gray-600">
-            测试和调用 FastAPI Web 服务的所有 API 接口
-          </p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">FastAPI 服务集成</h1>
+              <p className="mt-2 text-gray-600">
+                测试和调用 FastAPI Web 服务的所有 API 接口
+              </p>
+            </div>
+            <Link href="/zh/dashboard">
+              <Button variant="outline">← 返回 Dashboard</Button>
+            </Link>
+          </div>
           <div className="mt-4 space-y-2">
             <div className="text-sm text-blue-600">
               <a href="http://localhost:8081/docs" target="_blank" rel="noopener noreferrer" className="underline">
@@ -413,19 +574,10 @@ export default function ApiIntegrationPage() {
                 )}
 
                 <div className="flex space-x-2">
-                  <Button onClick={handleGetUserInfo} disabled={authLoading}>
+                  <Button onClick={() => handleGetUserInfo()} disabled={authLoading}>
                     获取用户信息
                   </Button>
-                  <Button
-                    onClick={() => {
-                      setToken('')
-                      setUserInfo(null)
-                      setItems([])
-                      setRedisStats(null)
-                      setRedisKeys([])
-                    }}
-                    variant="outline"
-                  >
+                  <Button onClick={handleLogout} variant="outline">
                     登出
                   </Button>
                 </div>
@@ -445,9 +597,11 @@ export default function ApiIntegrationPage() {
 
             {token && (
               <>
-                {/* 创建商品表单 */}
+                {/* 创建/编辑商品表单 */}
                 <div className="space-y-3 mb-6 p-4 bg-gray-50 rounded">
-                  <h3 className="font-medium">创建新商品</h3>
+                  <h3 className="font-medium">
+                    {selectedItem ? '编辑商品' : '创建新商品'}
+                  </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <Input
                       placeholder="商品名称"
@@ -461,19 +615,28 @@ export default function ApiIntegrationPage() {
                       onChange={(e) => setItemForm({...itemForm, price: e.target.value})}
                     />
                   </div>
-                  <Input
+                  <textarea
                     placeholder="描述（可选）"
                     value={itemForm.description}
                     onChange={(e) => setItemForm({...itemForm, description: e.target.value})}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
                   <Input
                     placeholder="分类（可选）"
                     value={itemForm.category}
                     onChange={(e) => setItemForm({...itemForm, category: e.target.value})}
                   />
-                  <Button onClick={handleCreateItem} size="sm">
-                    创建商品
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={handleCreateItem} size="sm">
+                      {selectedItem ? '更新商品' : '创建商品'}
+                    </Button>
+                    {selectedItem && (
+                      <Button onClick={handleCancelEdit} size="sm" variant="outline">
+                        取消编辑
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* 商品列表 */}
@@ -488,23 +651,35 @@ export default function ApiIntegrationPage() {
                   {itemsLoading ? (
                     <div className="text-center py-4">加载中...</div>
                   ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
                       {items.map((item) => (
                         <div key={item.id} className="flex justify-between items-center p-3 bg-white rounded border">
-                          <div>
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-gray-600">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate" title={item.name}>
+                              {item.name}
+                            </div>
+                            <div className="text-sm text-gray-600 truncate">
                               ¥{item.price} {item.category && `· ${item.category}`}
                             </div>
                           </div>
-                          <Button
-                            onClick={() => handleDeleteItem(item.id)}
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            删除
-                          </Button>
+                          <div className="flex gap-2 flex-shrink-0 ml-4">
+                            <Button
+                              onClick={() => handleEditItem(item)}
+                              size="sm"
+                              variant="outline"
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              编辑
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteItem(item.id)}
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              删除
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       {items.length === 0 && (

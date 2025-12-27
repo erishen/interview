@@ -27,21 +27,32 @@ export default function ProductsDisplay() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [showCart, setShowCart] = useState(false)
 
-  const loadProducts = async () => {
+  const loadProducts = async (retryCount = 0) => {
     setLoading(true)
     setError(null)
     try {
+      console.log(`尝试加载商品 (重试 ${retryCount + 1}/3)`)
       const response = await fetch('/api/fastapi/items')
       const data = await response.json()
+      console.log('响应状态:', response.status)
+      console.log('响应数据:', data)
+
       if (response.ok) {
         setProducts(data || [])
+        setLoading(false)
       } else {
-        setError('加载商品失败')
+        throw new Error(`HTTP ${response.status}: ${data?.error || '加载商品失败'}`)
       }
     } catch (err) {
-      setError('网络错误，无法加载商品')
+      console.error(`加载商品错误 (重试 ${retryCount + 1}/3):`, err)
+      if (retryCount < 3) {
+        // 重试最多3次，间隔1秒
+        setTimeout(() => loadProducts(retryCount + 1), 1000)
+      } else {
+        setError(err instanceof Error ? err.message : '网络错误，无法加载商品')
+        setLoading(false)
+      }
     }
-    setLoading(false)
   }
 
   const addToCart = (product: Product) => {
@@ -98,7 +109,12 @@ export default function ProductsDisplay() {
   }
 
   useEffect(() => {
-    loadProducts()
+    // 添加延迟，确保 FastAPI 后端完全启动
+    const timer = setTimeout(() => {
+      loadProducts()
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [])
 
   return (
@@ -119,7 +135,7 @@ export default function ProductsDisplay() {
               </span>
             )}
           </Button>
-          <Button onClick={loadProducts} size="sm" variant="outline">
+          <Button onClick={() => loadProducts()} size="sm" variant="outline">
             刷新
           </Button>
         </div>
@@ -193,12 +209,23 @@ export default function ProductsDisplay() {
       )}
 
       {loading && (
-        <div className="text-center py-12 text-gray-500">加载中...</div>
+        <div className="text-center py-12 text-gray-500">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>加载中...</p>
+        </div>
       )}
 
       {error && (
         <div className="bg-red-50 text-red-800 p-4 rounded mb-4">
-          {error}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold mb-1">加载失败</p>
+              <p className="text-sm">{error}</p>
+            </div>
+            <Button onClick={() => loadProducts()} size="sm" variant="outline">
+              重试
+            </Button>
+          </div>
         </div>
       )}
 
@@ -344,10 +371,6 @@ export default function ProductsDisplay() {
           </div>
         </div>
       )}
-
-      <div className="mt-6 text-sm text-gray-500">
-        数据来源: FastAPI 服务 ({process.env.FASTAPI_URL || 'http://localhost:8081'})
-      </div>
     </Card>
   )
 }

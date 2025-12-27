@@ -105,3 +105,6 @@ Thumbs.db
 
 # Turbo
 .turbo
+
+.trash
+.versions

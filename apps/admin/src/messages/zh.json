@@ -45,7 +45,7 @@
       "title": "快捷操作",
       "docLogs": "文档日志",
       "docsEditor": "文档编辑器",
-      "apiIntegration": "API 集成测试",
+      "apiIntegration": "FastAPI 服务集成",
       "addNewUser": "添加新用户",
       "generateReport": "生成报告",
       "systemSettings": "系统设置",

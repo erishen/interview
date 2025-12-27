@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { fastApiClient, buildFastApiUrl, buildHeaders, createProxyResponse } from '@interview/api-client'
+import { fastApiClient, buildHeaders, createProxyResponse } from '@interview/api-client'
 
 export interface ProxyOptions {
   includeQueryParams?: boolean
@@ -26,17 +26,25 @@ export async function proxyToFastApi(
 
   try {
     // 对于 admin 应用，使用重定向处理
+    const ApiClient = await import('@interview/api-client')
     const client = enableRedirectHandling
-      ? new (await import('@interview/api-client')).FastApiClient({ enableRedirectHandling: true })
+      ? new ApiClient.FastApiClient({ enableRedirectHandling: true })
       : fastApiClient
 
-    // 添加文档日志 API Key
-    const headers: Record<string, string> = {
-      ...Object.fromEntries(request.headers.entries()),
+    // 从 NextRequest 中提取所有 cookies 并转发给 FastAPI
+    const cookieString = request.headers.get('cookie') || ''
+    if (cookieString) {
+      client.setCookieString(cookieString)
     }
-    
+
     // 从环境变量读取 DOC_LOG_API_KEY 并添加到请求头
-    if (process.env.DOC_LOG_API_KEY) {
+    const headers: Record<string, string> = {}
+    for (const [key, value] of request.headers.entries()) {
+      headers[key] = value
+    }
+
+    // 只有当请求头中没有 X-API-Key 时才添加（避免重复）
+    if (process.env.DOC_LOG_API_KEY && !headers['X-API-Key'] && !headers['x-api-key']) {
       headers['X-API-Key'] = process.env.DOC_LOG_API_KEY
     }
 
@@ -48,20 +56,20 @@ export async function proxyToFastApi(
     switch (method.toUpperCase()) {
       case 'GET':
         response = await client.get(params.path, {
-          headers,
+          headers: proxyHeaders,
           query: includeQueryParams ? Object.fromEntries(new URL(request.url).searchParams) : undefined,
         })
         break
       case 'POST':
         const postBody = await request.text()
-        response = await client.post(params.path, postBody, { headers })
+        response = await client.post(params.path, postBody, { headers: proxyHeaders })
         break
       case 'PUT':
         const putBody = await request.text()
-        response = await client.put(params.path, putBody, { headers })
+        response = await client.put(params.path, putBody, { headers: proxyHeaders })
         break
       case 'DELETE':
-        response = await client.delete(params.path, { headers })
+        response = await client.delete(params.path, { headers: proxyHeaders })
         break
       default:
         throw new Error(`Unsupported HTTP method: ${method}`)

@@ -21,7 +21,7 @@ export const apiConfig = {
 
 // FastAPI Configuration
 export const fastApiConfig = {
-  baseUrl: process.env.FASTAPI_URL || "http://localhost:8081",
+  baseUrl: process.env.FASTAPI_URL || "http://localhost:8082",
   timeout: 15000,
   retries: 2,
   endpoints: {

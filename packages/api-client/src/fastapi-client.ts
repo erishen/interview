@@ -11,10 +11,14 @@ import type { FastApiOptions, FastApiUrlOptions, RequestOptions, ApiResponse, Ap
  */
 export function buildFastApiUrl(pathSegments: string[], options: FastApiUrlOptions = {}): string {
   const { includeQueryParams = false, request } = options
-  const filteredPath = pathSegments.filter(segment => segment.length > 0)
+  let filteredPath = pathSegments.filter(segment => segment.length > 0)
 
-  // FastAPI 默认不需要尾部斜杠
-  // 所有路由都不需要尾部斜杠
+  // FastAPI 资源路由（如 /items/, /redis/）需要尾部斜杠
+  // 当 pathSegments 只有一个元素时（资源列表请求），添加尾部斜杠以避免 307 重定向
+  if (filteredPath.length === 1 && !filteredPath[0].endsWith('/')) {
+    filteredPath[0] = `${filteredPath[0]}/`
+  }
+
   const path = filteredPath.length > 0 ? filteredPath.join('/') : ''
 
   const baseUrl = `${fastApiConfig.baseUrl}/${path}`
@@ -106,6 +110,7 @@ export async function handleRedirect(
       response = await fetch(redirectUrl, {
         method: 'GET',
         headers: originalHeaders,
+        credentials: 'include',  // 关键：发送 cookies
       })
     }
   }
@@ -118,21 +123,28 @@ export async function handleRedirect(
  */
 export async function makeRequest<T = any>(
   url: string,
-  options: RequestOptions & { enableRedirectHandling?: boolean } = {}
+  options: RequestOptions & { enableRedirectHandling?: boolean; cookieString?: string } = {}
 ): Promise<ApiResponse<T>> {
   const {
     method = 'GET',
     headers = {},
     body,
     timeout = 30000,
-    enableRedirectHandling = false
+    enableRedirectHandling = false,
+    cookieString
   } = options
 
   const requestHeaders = buildHeaders({ headers }, false)
 
+  // 如果提供了 cookieString（服务器端场景），将其添加到 Cookie header
+  if (cookieString) {
+    requestHeaders['Cookie'] = cookieString
+  }
+
   const fetchOptions: RequestInit = {
     method,
     headers: requestHeaders,
+    credentials: 'include',  // 关键：发送 cookies（包括 httpOnly cookies）
   }
 
   // 对于有请求体的HTTP方法，添加body
@@ -173,9 +185,22 @@ export async function makeRequest<T = any>(
       data = await response.text()
     }
 
-    const responseHeaders: Record<string, string> = {}
+    // 收集响应 headers，支持多个同名的 header（如 Set-Cookie）
+    const responseHeaders: Record<string, string | string[]> = {}
     response.headers.forEach((value, key) => {
-      responseHeaders[key] = value
+      const lowerKey = key.toLowerCase()
+      // 对于可能有多个值的 header，使用数组
+      if (lowerKey === 'set-cookie' || responseHeaders[key]) {
+        if (Array.isArray(responseHeaders[key])) {
+          responseHeaders[key].push(value)
+        } else if (responseHeaders[key]) {
+          responseHeaders[key] = [responseHeaders[key], value]
+        } else {
+          responseHeaders[key] = [value]
+        }
+      } else {
+        responseHeaders[key] = value
+      }
     })
 
     return {
@@ -203,26 +228,32 @@ export async function makeRequest<T = any>(
  */
 export class FastApiClient {
   private baseUrl: string
-  private defaultOptions: FastApiOptions
+  private defaultOptions: FastApiOptions & { cookieString?: string }
 
-  constructor(options: FastApiOptions = {}) {
+  constructor(options: FastApiOptions & { cookieString?: string } = {}) {
     this.baseUrl = options.baseUrl || fastApiConfig.baseUrl
     this.defaultOptions = options
+  }
+
+  /**
+   * 设置 cookie 字符串（用于服务器端场景）
+   */
+  setCookieString(cookieString: string) {
+    this.defaultOptions.cookieString = cookieString
   }
 
   /**
    * 构建完整的 API URL
    */
   private buildUrl(pathSegments: string[], queryParams?: Record<string, string>): string {
-    const filteredPath = pathSegments.filter(segment => segment.length > 0)
+    let filteredPath = pathSegments.filter(segment => segment.length > 0)
 
-    // FastAPI 默认不需要尾部斜杠
-    // 所有路由都不需要尾部斜杠，包括：
-    // - /, /health (system)
-    // - /auth (认证)
-    // - /items, /items/{id} (商品)
-    // - /redis (Redis 操作)
-    // - /api/docs, /api/docs/log, /api/docs/logs (文档日志)
+    // FastAPI 资源路由（如 /items/, /redis/）需要尾部斜杠
+    // 当 pathSegments 只有一个元素时（资源列表请求），添加尾部斜杠以避免 307 重定向
+    if (filteredPath.length === 1 && !filteredPath[0].endsWith('/')) {
+      filteredPath[0] = `${filteredPath[0]}/`
+    }
+
     const path = filteredPath.length > 0 ? filteredPath.join('/') : ''
 
     let url = `${this.baseUrl}/${path}`
@@ -252,6 +283,7 @@ export class FastApiClient {
       ...requestOptions,
       method: 'GET',
       enableRedirectHandling: this.defaultOptions.enableRedirectHandling,
+      cookieString: this.defaultOptions.cookieString,
     })
   }
 
@@ -269,6 +301,7 @@ export class FastApiClient {
       ...options,
       method: 'POST',
       body: data,
+      cookieString: this.defaultOptions.cookieString,
     })
   }
 
@@ -286,6 +319,7 @@ export class FastApiClient {
       ...options,
       method: 'PUT',
       body: data,
+      cookieString: this.defaultOptions.cookieString,
     })
   }
 
@@ -301,6 +335,7 @@ export class FastApiClient {
     return makeRequest<T>(url, {
       ...options,
       method: 'DELETE',
+      cookieString: this.defaultOptions.cookieString,
     })
   }
 }
@@ -334,18 +369,60 @@ export function createProxyResponse(response: any, corsEnabled: boolean = true) 
   // 动态导入 NextResponse 以避免在非 Next.js 环境中出错
   const { NextResponse } = require('next/server')
 
-  const headers: Record<string, string> = {
-    'Content-Type': contentType,
+  // 使用 Headers API 来正确处理多个同名的 headers（如 Set-Cookie）
+  const headers = new Headers()
+
+  // 设置基本的 Content-Type
+  headers.set('Content-Type', contentType)
+
+  // 转发所有原始 headers
+  for (const [key, value] of Object.entries(response.headers)) {
+    const lowerKey = key.toLowerCase()
+
+    // 跳过 Content-Type（已经设置过了）
+    if (lowerKey === 'content-type') {
+      continue
+    }
+
+    // 跳过 Content-Length（让 Next.js 自动计算）
+    if (lowerKey === 'content-length') {
+      continue
+    }
+
+    // 跳过 Transfer-Encoding（让 Next.js 自动处理）
+    if (lowerKey === 'transfer-encoding') {
+      continue
+    }
+
+    // 对于 Set-Cookie，使用 append（支持多个同名 header）
+    if (lowerKey === 'set-cookie') {
+      const cookies = Array.isArray(value) ? value : [value]
+      for (const cookie of cookies) {
+        headers.append('Set-Cookie', cookie as string)
+      }
+    } else {
+      // 跳过原始的 CORS headers（我们会重新设置）
+      if (!lowerKey.startsWith('access-control-')) {
+        // 如果是数组，只取第一个值
+        const headerValue = Array.isArray(value) ? value[0] : value
+        headers.set(key, headerValue as string)
+      }
+    }
   }
 
+  // 添加 CORS headers（覆盖原有的）
   if (corsEnabled) {
-    headers['Access-Control-Allow-Origin'] = '*'
-    headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    headers['Access-Control-Allow-Headers'] = '*'
+    headers.set('Access-Control-Allow-Origin', '*')
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    headers.set('Access-Control-Allow-Headers', '*')
+    headers.set('Access-Control-Allow-Credentials', 'true')  // 关键：允许携带 credentials
   }
 
-  return new NextResponse(responseBody, {
+  // NextResponse 会自动计算 Content-Length，不需要手动设置
+  const nextResponse = new NextResponse(responseBody, {
     status: response.status,
     headers,
   })
+
+  return nextResponse
 }

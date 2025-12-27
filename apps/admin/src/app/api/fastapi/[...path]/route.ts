@@ -15,7 +15,8 @@ export async function POST(
   { params }: { params: { path: string[] } }
 ) {
   return proxyToFastApi(request, 'POST', params, {
-    strictHeaders: true, // Admin app uses strict header filtering
+    enableRedirectHandling: true, // Enable redirect handling for POST requests
+    strictHeaders: false, // POST needs X-API-Key for doc logging
   })
 }
 
@@ -24,6 +25,7 @@ export async function PUT(
   { params }: { params: { path: string[] } }
 ) {
   return proxyToFastApi(request, 'PUT', params, {
+    enableRedirectHandling: true, // Enable redirect handling for PUT requests
     strictHeaders: false, // Admin app PUT allows more headers including User-Agent
   })
 }
@@ -33,6 +35,7 @@ export async function DELETE(
   { params }: { params: { path: string[] } }
 ) {
   return proxyToFastApi(request, 'DELETE', params, {
+    enableRedirectHandling: true, // Enable redirect handling for DELETE requests
     strictHeaders: true, // Admin app DELETE uses strict header filtering
   })
 }
