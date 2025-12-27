@@ -61,12 +61,6 @@ export default function DocLogsPage() {
       )
     }
 
-    console.log('[Doc Logs] Applied filters:', {
-      action: filterAction,
-      slug: filterDoc,
-      resultCount: filtered.length
-    })
-
     // 更新总数并应用分页
     setTotalCount(filtered.length)
     const startIndex = (currentPage - 1) * pageSize

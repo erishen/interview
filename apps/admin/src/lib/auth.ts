@@ -291,7 +291,22 @@ export const authOptions: NextAuthOptions = {
   },
   
   secret: process.env.NEXTAUTH_SECRET,
-  
-  // Add debug mode for development
-  debug: process.env.NODE_ENV === 'development',
+
+  // Disable debug mode to avoid 401 errors in console
+  debug: false,
+
+  // Custom logger to filter out expected 401 errors
+  logger: {
+    error(code, metadata) {
+      // Ignore client fetch errors for session (normal when not logged in)
+      if (code === 'CLIENT_FETCH_ERROR') return
+      console.error(`[next-auth][error][${code}]`, metadata)
+    },
+    warn(code) {
+      console.warn(`[next-auth][warn][${code}]`)
+    },
+    debug(code, metadata) {
+      console.log(`[next-auth][debug][${code}]`, metadata)
+    }
+  }
 }

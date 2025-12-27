@@ -76,12 +76,10 @@ export class FastAPIClient {
       // 检查是否过期（提前 5 分钟过期，防止边界情况）
       const FIVE_MINUTES = 5 * 60 * 1000
       if (Date.now() > token.expires_at - FIVE_MINUTES) {
-        console.log('[FastAPI Client] Token 已过期，需要刷新')
         this.clearCache()
         return null
       }
 
-      console.log('[FastAPI Client] 使用缓存的 Token')
       return token
     } catch (err) {
       console.error('[FastAPI Client] 读取缓存失败:', err)
@@ -98,8 +96,6 @@ export class FastAPIClient {
     if (cached) {
       return cached
     }
-
-    console.log('[FastAPI Client] 缓存未命中，请求新 Token')
 
     // 2. 通过后端 API 获取
     // 获取 Passport 用户信息

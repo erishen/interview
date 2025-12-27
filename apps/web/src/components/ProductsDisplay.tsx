@@ -31,11 +31,8 @@ export default function ProductsDisplay() {
     setLoading(true)
     setError(null)
     try {
-      console.log(`尝试加载商品 (重试 ${retryCount + 1}/3)`)
       const response = await fetch('/api/fastapi/items')
       const data = await response.json()
-      console.log('响应状态:', response.status)
-      console.log('响应数据:', data)
 
       if (response.ok) {
         setProducts(data || [])
@@ -44,7 +41,7 @@ export default function ProductsDisplay() {
         throw new Error(`HTTP ${response.status}: ${data?.error || '加载商品失败'}`)
       }
     } catch (err) {
-      console.error(`加载商品错误 (重试 ${retryCount + 1}/3):`, err)
+      console.error('加载商品错误:', err)
       if (retryCount < 3) {
         // 重试最多3次，间隔1秒
         setTimeout(() => loadProducts(retryCount + 1), 1000)

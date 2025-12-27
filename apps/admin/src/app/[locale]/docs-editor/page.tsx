@@ -395,7 +395,7 @@ export default function DocEditorPage() {
       {isAuthenticated && (
         <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 py-4">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">📝</span>
                 <div>
@@ -403,7 +403,7 @@ export default function DocEditorPage() {
                   <p className="text-sm text-gray-500">{session?.user?.name || passportUser?.name}</p>
                 </div>
               </div>
-              <Button onClick={() => router.push('/dashboard')} variant="outline">
+              <Button onClick={() => router.push('/dashboard')} variant="outline" className="w-full sm:w-auto">
                 ← 返回 Dashboard
               </Button>
             </div>
@@ -428,21 +428,21 @@ export default function DocEditorPage() {
               {/* 文档列表 */}
               <div className="lg:col-span-1">
                 <Card className="p-6 shadow-lg border-0 bg-white/90 backdrop-blur">
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                     <h2 className="text-lg font-semibold text-gray-900">
                       {showTrash ? '🗑️ 回收站' : '📚 文档列表'}
                     </h2>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       {!showTrash && (
-                        <Button onClick={() => setShowCreateModal(true)} size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                          + 新建
+                        <Button onClick={() => setShowCreateModal(true)} size="sm" className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                          ➕ 新建
                         </Button>
                       )}
                       <Button
                         onClick={() => setShowTrash(!showTrash)}
                         size="sm"
                         variant={showTrash ? 'outline' : 'ghost'}
-                        className={showTrash ? 'text-green-600 border-green-300 hover:bg-green-50' : 'text-gray-500 hover:text-gray-700'}
+                        className={showTrash ? 'flex-1 sm:flex-none text-green-600 border-green-300 hover:bg-green-50' : 'flex-1 sm:flex-none text-gray-500 hover:text-gray-700'}
                       >
                         {showTrash ? '↩ 返回' : '🗑️ 回收站'}
                       </Button>
@@ -539,28 +539,30 @@ export default function DocEditorPage() {
                   <>
                     {/* 编辑器 */}
                     <Card className="p-6 shadow-lg border-0 bg-white/90 backdrop-blur">
-                      <div className="flex justify-between items-center mb-4">
+                      <div className="flex flex-col gap-3 mb-4">
                         <div>
                           <h2 className="text-2xl font-bold text-gray-900">{selectedDoc.title}</h2>
                           <div className="text-sm text-gray-500">{selectedDoc.slug}.md</div>
                         </div>
-                        <div className="space-x-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             onClick={() => setShowVersionsModal(true)}
                             variant="outline"
+                            className="flex-1 sm:flex-none"
                           >
-                            📜 版本历史
+                            📜 版本
                           </Button>
                           <Button
                             onClick={saveDoc}
                             disabled={saving}
-                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                            className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                           >
                             {saving ? '保存中...' : '💾 保存'}
                           </Button>
                           <Button
                             onClick={() => window.open(`${process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'}/docs/${selectedDoc.slug}`, '_blank')}
                             variant="outline"
+                            className="flex-1 sm:flex-none"
                           >
                             👁️ 预览
                           </Button>
@@ -681,12 +683,12 @@ export default function DocEditorPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b bg-gray-50">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900">📜 版本历史</h3>
                   <p className="text-sm text-gray-500 mt-1">{selectedDoc?.title}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button
                     onClick={() => {
                       setCompareMode(!compareMode)
@@ -696,8 +698,9 @@ export default function DocEditorPage() {
                     }}
                     variant={compareMode ? 'default' : 'outline'}
                     size="sm"
+                    className="flex-1 sm:flex-none"
                   >
-                    {compareMode ? '🔍 退出对比' : '📊 对比模式'}
+                    {compareMode ? '🔍 退出对比' : '📊 对比'}
                   </Button>
                   <Button
                     onClick={() => {
@@ -709,6 +712,7 @@ export default function DocEditorPage() {
                     }}
                     variant="outline"
                     size="sm"
+                    className="flex-1 sm:flex-none"
                   >
                     ✕ 关闭
                   </Button>

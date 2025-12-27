@@ -61,7 +61,7 @@ export default function HomePage() {
               </svg>
               管理后台
               <svg className="ml-2 w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 1 1 0 002 0zm-1 8a1 1 0 102 0 1 1 0 01-2zm0-4a1 1 0 102 0 1 1 0 01-2z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M10 18a 8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-11a 1 1 0 1 0 -2 0 1 1 0 0 0 2 0zm-1 8a 1 1 0 1 0 -2 0 1 1 0 0 1 2 0zm0-4a 1 1 0 1 0 -2 0 1 1 0 0 1 2 0z" clipRule="evenodd" />
               </svg>
             </a>
           </div>
