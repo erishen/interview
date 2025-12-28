@@ -11,7 +11,7 @@ const DOCS_DIR = path.join(process.cwd(), '../../docs');
 
 // Admin API 配置
 const ADMIN_API_URL = process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003';
-const DOCS_API_ENDPOINT = `${ADMIN_API_URL}/api/admin/docs`;
+const DOCS_API_ENDPOINT = `${ADMIN_API_URL}/api/docs-public`; // 使用公开 API，无需认证
 
 // 是否为生产环境
 const isProduction = process.env.NODE_ENV === 'production';
