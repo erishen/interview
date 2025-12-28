@@ -18,6 +18,7 @@
     "@interview/types": "workspace:*",
     "@interview/ui": "workspace:*",
     "@interview/utils": "workspace:*",
+    "@supabase/supabase-js": "catalog:",
     "@vercel/kv": "^1.0.1",
     "bcryptjs": "catalog:",
     "dotenv": "catalog:",

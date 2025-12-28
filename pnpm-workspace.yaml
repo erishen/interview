@@ -56,3 +56,5 @@ catalog:
   "@types/redis": "^4.0.11"
   "ioredis": "^5.3.2"
   "@types/ioredis": "^5.0.0"
+  # Supabase dependencies
+  "@supabase/supabase-js": "^2.45.4"

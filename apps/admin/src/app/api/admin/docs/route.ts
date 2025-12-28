@@ -3,7 +3,17 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { isKVConfigured, getAllDocs, createDoc as kvCreateDoc, updateDoc as kvUpdateDoc, deleteDoc as kvDeleteDoc, getTrashDocs, restoreDoc as kvRestoreDoc, deleteFromTrash as kvDeleteFromTrash } from '@/lib/kv-store'
+import {
+  isKVConfigured,
+  getAllDocs as kvGetAllDocs,
+  createDoc as kvCreateDoc,
+  getTrashDocs as kvGetTrashDocs
+} from '@/lib/kv-store'
+import {
+  isSupabaseConfigured,
+  getAllDocs as supabaseGetAllDocs,
+  createDoc as supabaseCreateDoc
+} from '@/lib/supabase-store'
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {
@@ -123,12 +133,21 @@ export async function GET(request: NextRequest) {
   try {
     let docs
 
-    if (isKVConfigured()) {
-      // 使用 Vercel KV 存储
+    if (isSupabaseConfigured()) {
+      // 使用 Supabase 存储
       if (trash) {
+        // Supabase 回收站支持
+        const { getTrashDocs } = await import('@/lib/supabase-store')
         docs = await getTrashDocs()
       } else {
-        docs = await getAllDocs()
+        docs = await supabaseGetAllDocs()
+      }
+    } else if (isKVConfigured()) {
+      // 使用 Vercel KV 存储
+      if (trash) {
+        docs = await kvGetTrashDocs()
+      } else {
+        docs = await kvGetAllDocs()
       }
     } else {
       // 文件系统存储（本地开发）
@@ -194,7 +213,10 @@ export async function POST(request: NextRequest) {
 
     let success
 
-    if (isKVConfigured()) {
+    if (isSupabaseConfigured()) {
+      // 使用 Supabase 存储
+      success = await supabaseCreateDoc(slug, title, content)
+    } else if (isKVConfigured()) {
       // 使用 Vercel KV 存储
       success = await kvCreateDoc(slug, title, content)
     } else {

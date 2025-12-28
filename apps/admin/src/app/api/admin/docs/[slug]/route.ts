@@ -3,7 +3,25 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { isKVConfigured, getDoc as kvGetDoc, createDoc as kvCreateDoc, updateDoc as kvUpdateDoc, deleteDoc as kvDeleteDoc, getTrashDocs, restoreDoc as kvRestoreDoc, deleteFromTrash as kvDeleteFromTrash } from '@/lib/kv-store'
+import {
+  isKVConfigured,
+  getDoc as kvGetDoc,
+  createDoc as kvCreateDoc,
+  updateDoc as kvUpdateDoc,
+  deleteDoc as kvDeleteDoc,
+  getTrashDocs as kvGetTrashDocs,
+  restoreDoc as kvRestoreDoc,
+  deleteFromTrash as kvDeleteFromTrash
+} from '@/lib/kv-store'
+import {
+  isSupabaseConfigured,
+  getDoc as supabaseGetDoc,
+  updateDoc as supabaseUpdateDoc,
+  deleteDoc as supabaseDeleteDoc,
+  getTrashDocs as supabaseGetTrashDocs,
+  restoreDoc as supabaseRestoreDoc,
+  deleteFromTrash as supabaseDeleteFromTrash
+} from '@/lib/supabase-store'
 import { getDocsDir } from '@/lib/docs-path'
 
 // 本地开发目录
@@ -160,7 +178,10 @@ export async function GET(
 
     let doc
 
-    if (isKVConfigured()) {
+    if (isSupabaseConfigured()) {
+      // 使用 Supabase 存储
+      doc = await supabaseGetDoc(slug)
+    } else if (isKVConfigured()) {
       // 使用 Vercel KV 存储
       doc = await kvGetDoc(slug)
     } else {
@@ -228,7 +249,19 @@ export async function PUT(
 
     let success
 
-    if (isKVConfigured()) {
+    if (isSupabaseConfigured()) {
+      // 使用 Supabase 存储
+      const existingDoc = await supabaseGetDoc(slug)
+      if (!existingDoc) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      }
+
+      // 提取标题（从内容中）
+      const titleMatch = content.match(/^#\s+(.+)$/m)
+      const title = titleMatch ? titleMatch[1] : slug
+
+      success = await supabaseUpdateDoc(slug, title, content)
+    } else if (isKVConfigured()) {
       // 使用 Vercel KV 存储
       const existingDoc = await kvGetDoc(slug)
       if (!existingDoc) {
@@ -290,7 +323,10 @@ export async function DELETE(
 
     let success
 
-    if (isKVConfigured()) {
+    if (isSupabaseConfigured()) {
+      // 使用 Supabase 存储
+      success = await supabaseDeleteDoc(slug)
+    } else if (isKVConfigured()) {
       // 使用 Vercel KV 存储
       success = await kvDeleteDoc(slug)
     } else {
@@ -346,10 +382,21 @@ export async function PATCH(
 
     let success
 
-    if (isKVConfigured()) {
+    if (isSupabaseConfigured()) {
+      // 使用 Supabase 存储
+      // 查找回收站中的文件（需要 timestamp）
+      const trashDocs = await supabaseGetTrashDocs()
+      const trashDoc = trashDocs.find(d => d.slug === slug)
+
+      if (!trashDoc) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found in trash' }, { status: 404 }))
+      }
+
+      success = await supabaseRestoreDoc(slug, trashDoc.trash_timestamp)
+    } else if (isKVConfigured()) {
       // 使用 Vercel KV 存储
       // 查找回收站中的文件（需要 timestamp）
-      const trashDocs = await getTrashDocs()
+      const trashDocs = await kvGetTrashDocs()
       const trashDoc = trashDocs.find(d => d.slug === slug)
 
       if (!trashDoc) {

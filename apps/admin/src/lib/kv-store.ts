@@ -1,5 +1,3 @@
-import { getDocsDir } from './docs-path'
-
 // Vercel KV 客户端（懒加载）
 let kv: any = null
 
@@ -24,6 +22,7 @@ async function getKV(): Promise<any> {
       else if (process.env.REDIS_URL) {
         kv = createClient({
           url: process.env.REDIS_URL,
+          token: '',  // Redis URL 不需要 token，但 createClient 要求提供
         })
         console.log('[KV Store] Redis client initialized successfully')
       } else {
@@ -339,6 +338,11 @@ export async function deleteDoc(slug: string): Promise<boolean> {
  * 获取回收站文档
  */
 export async function getTrashDocs(): Promise<TrashDoc[]> {
+  const client = await getKV()
+  if (!client) {
+    return []
+  }
+
   const items = await getTrashList()
   const docs: TrashDoc[] = []
 
@@ -423,9 +427,9 @@ export async function deleteFromTrash(slug: string, trashTimestamp: string): Pro
     return false
   }
 
-  try {
-    const trashId = `${slug}:${trashTimestamp}`
+  const trashId = `${slug}:${trashTimestamp}`
 
+  try {
     // 从回收站列表中移除
     const trashItems = await getTrashList()
     const newTrashItems = trashItems.filter(item => item !== trashId)
