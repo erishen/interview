@@ -56,7 +56,7 @@
 │
 ├── 构建工具
 │   ├── Turborepo                         # Monorepo 构建工具
-│   ├── pnpm 10                           # 高效的包管理器
+│   ├── pnpm                             # 高效的包管理器
 │   └── Docker                            # 容器化部署
 │
 ├── 样式方案
@@ -86,7 +86,7 @@
 │                    API 网关层                             │
 │              api.erishen.cn (FastAPI)                     │
 │  - RESTful API 接口                                         │
-│  - WebSocket 实时推送                                      │
+│  - WebSocket 实时推送（计划中）                            │
 │  - 认证授权服务                                             │
 └─────────────────────────────────────────────────────────────┘
                            ↓
@@ -308,7 +308,7 @@ Admin 应用是一个企业级技术演示平台，用于展示和验证多种�
 
 ### 3. FastAPI 后端服务
 
-FastAPI 后端提供完整的 RESTful API 服务和实时通信能力：
+FastAPI 后端提供完整的 RESTful API 服务：
 
 - **商品管理 API**：完整的 CRUD 操作
   - 商品列表查询（分页、筛选、搜索）
@@ -319,16 +319,49 @@ FastAPI 后端提供完整的 RESTful API 服务和实时通信能力：
   - 添加/删除商品
   - 数量修改
   - 清空购物车
-  - 实时同步（WebSocket）
 - **文档 API**：知识库文档服务
   - 文档列表和详情
   - 文档操作日志
   - 编辑权限控制
   - 实时预览
+
+#### 计划中的功能
+
+以下功能已规划实现，当前处于开发阶段：
+
 - **实时通信**：WebSocket 支持
   - 购物车实时同步
   - 健康度评分系统
   - 在线状态推送
+
+#### WebSocket 实现示例
+
+```python
+# app/api/routers/websocket.py
+from fastapi import WebSocket, WebSocketDisconnect
+import json
+
+@app.websocket("/ws/cart/{user_id}")
+async def websocket_cart(websocket: WebSocket, user_id: int):
+    """实时购物车同步（计划中）"""
+    await websocket.accept()
+    active_connections[user_id] = websocket
+
+    try:
+        while True:
+            # 接收客户端消息
+            data = await websocket.receive_text()
+            message = json.loads(data)
+
+            # 广播给同一用户的其他连接
+            for connection in active_connections.get(user_id, []):
+                if connection != websocket:
+                    await connection.send_json(message)
+    except WebSocketDisconnect:
+        # 清理连接
+        if user_id in active_connections:
+            del active_connections[user_id]
+```
 - **安全机制**：
   - JWT 令牌认证
   - 速率限制（防止 DDoS）
@@ -381,7 +414,9 @@ async def get_products(
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(product_id: int, db: AsyncSession = Depends(get_db)):
     """获取商品详情"""
-    product = await db.get(Product, product_id)
+    from sqlalchemy import select
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
     return product
@@ -393,40 +428,11 @@ async def create_product(
     current_user = Depends(get_current_user)
 ):
     """创建新商品（需要认证）"""
-    db_product = Product(**product.dict())
+    db_product = Product(**product.model_dump())  # Pydantic v2 语法
     db.add(db_product)
     await db.commit()
     await db.refresh(db_product)
     return db_product
-```
-
-#### WebSocket 实时同步
-
-```python
-# app/api/routers/websocket.py
-from fastapi import WebSocket, WebSocketDisconnect
-import json
-
-@app.websocket("/ws/cart/{user_id}")
-async def websocket_cart(websocket: WebSocket, user_id: int):
-    """实时购物车同步"""
-    await websocket.accept()
-    active_connections[user_id] = websocket
-
-    try:
-        while True:
-            # 接收客户端消息
-            data = await websocket.receive_text()
-            message = json.loads(data)
-
-            # 广播给同一用户的其他连接
-            for connection in active_connections.get(user_id, []):
-                if connection != websocket:
-                    await connection.send_json(message)
-    except WebSocketDisconnect:
-        # 清理连接
-        if user_id in active_connections:
-            del active_connections[user_id]
 ```
 
 #### Pydantic 数据验证
@@ -557,9 +563,10 @@ app = FastAPI(
 )
 
 # CORS 配置
+# 注意：allow_origins=["*"] 仅用于开发环境，生产环境请指定具体域名
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # 生产环境请改为 ["https://web.erishen.cn", ...]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -570,12 +577,12 @@ app.include_router(products.router, prefix="/api/products", tags=["Products"])
 app.include_router(cart.router, prefix="/api/cart", tags=["Cart"])
 app.include_router(docs.router, prefix="/api/docs", tags=["Docs"])
 
-# WebSocket 支持
-@app.websocket("/ws/cart/{user_id}")
-async def websocket_cart(websocket: WebSocket, user_id: int):
-    await websocket.accept()
-    # 实时购物车同步逻辑
-    ...
+# WebSocket 支持（计划中）
+# @app.websocket("/ws/cart/{user_id}")
+# async def websocket_cart(websocket: WebSocket, user_id: int):
+#     await websocket.accept()
+#     # 实时购物车同步逻辑
+#     ...
 ```
 
 **优势**：
@@ -851,9 +858,9 @@ from json import dumps, loads
 class CacheService:
     def __init__(self):
         self.redis = Redis(
-            host="localhost",
-            port=6380,
-            password="redispassword",
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", "6379")),
+            password=os.getenv("REDIS_PASSWORD"),
             decode_responses=True
         )
 
@@ -886,7 +893,7 @@ class CacheService:
 - 商品列表：5 分钟（热点数据）
 - 用户会话：30 分钟
 - 文档内容：10 分钟
-- 购物车数据：实时同步
+- 购物车数据：实时同步（WebSocket 计划中）
 
 ### 开发环境启动
 
@@ -932,8 +939,12 @@ open http://localhost:3000/docs
 - [ ] 实现深色模式
 - [ ] 添加阅读进度和书签功能
 - [ ] 支持导出 PDF
+- [ ] 数据埋点，用户访问信息记录
+- [ ] 商品支付集成（仅用于学习，不涉及真实交易）
 
 #### 后端优化
+- [ ] WebSocket 实时通信功能（购物车同步、在线状态推送）
+- [ ] 健康度评分系统
 - [ ] 添加性能监控（Prometheus + Grafana）
 - [ ] 实现分布式追踪（Jaeger）
 - [ ] 添加消息队列（RabbitMQ/Celery）
@@ -956,7 +967,7 @@ open http://localhost:3000/docs
 - **分享的力量**：知识越分享越丰富
 - **用户体验**的细节：从简单渲染到优雅展示
 
-最新添加的文档展示系统和 FastAPI 后端服务，让知识库的维护和使用变得更加便捷。Markdown 文件只需放入 `docs/` 目录，即可自动在 Web 应用中展示；API 层面提供了完整的 CRUD 操作和实时通信能力，大大降低了内容更新和功能扩展的门槛。
+最新添加的文档展示系统和 FastAPI 后端服务，让知识库的维护和使用变得更加便捷。Markdown 文件只需放入 `docs/` 目录，即可自动在 Web 应用中展示；API 层面提供了完整的 CRUD 操作，未来将支持 WebSocket 实时通信能力（购物车同步、在线状态推送等），大大降低内容更新和功能扩展的门槛。
 
 希望这个项目能够成为更多开发者的技术参考和学习助手。如果你对项目有任何建议或想要贡献内容，欢迎参与共建！
 
@@ -975,8 +986,29 @@ open http://localhost:3000/docs
 
 **技术栈**：
 - 前端：Next.js 14 + React 18 + TypeScript 5 + Turborepo
-- 后端：FastAPI + Python 3.10 + Pydantic + SQLAlchemy
+- 后端：FastAPI + Python 3.10 + Pydantic v2 + SQLAlchemy
 - 数据库：MySQL 8.0 + Redis
 - 部署：Vercel + Docker + Nginx
+
+## 免责声明
+
+本文档及相关的开源项目仅供技术学习和交流使用。文档中展示的所有代码、架构设计和技术方案均为实践总结，不构成任何形式的商业建议或技术担保。
+
+**重要说明**：
+- 本项目遵循 MIT 开源许可证
+- 文档内容仅供参考学习，实际生产环境使用需根据具体场景调整
+- 涉及支付功能的代码仅作为技术演示，不涉及真实交易
+- 使用本项目产生的任何问题，作者不承担任何责任
+- 商业化使用请确保符合相关法律法规要求
+
+**法律合规**：
+- 如需商业化使用支付功能，请确保完成以下合规要求：
+  - 营业执照及 ICP 备案
+  - 支付机构签约及牌照
+  - 税务登记及发票开具能力
+  - 遵守《中华人民共和国网络安全法》等相关法规
+- 建议在正式上线前咨询专业律师
+
+---
 
 > "授人以鱼不如授人以渔"，希望这个全栈知识库能够帮助更多开发者成长！
