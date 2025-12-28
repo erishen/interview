@@ -175,6 +175,7 @@ export async function GET(request: NextRequest) {
     if (isSupabaseConfigured()) {
       docs = await supabaseGetAllDocs()
       console.log('[Public Docs API] Fetched', docs.length, 'docs from Supabase')
+      console.log('[Public Docs API] Docs list:', docs.map(d => ({ slug: d.slug, title: d.title })))
     } else if (isKVConfigured()) {
       docs = await kvGetAllDocs()
     } else {
