@@ -110,7 +110,7 @@ function getLocalDocBySlug(slug: string): string | null {
   return fs.readFileSync(filePath, 'utf-8');
 }
 
-// 获取所有文档（构建时优先本地，生产环境优先 Admin API）
+// 获取所有文档（构建时优先本地，生产环境优先 Admin API，失败则降级）
 export async function getAllDocs(): Promise<Doc[]> {
   // 构建时或开发环境：优先本地文件
   if (isBuildTime || !isProduction) {
@@ -123,11 +123,17 @@ export async function getAllDocs(): Promise<Doc[]> {
     return adminDocs.length > 0 ? adminDocs : [];
   }
 
-  // 生产环境：优先从 Admin API
-  return await fetchDocsFromAdmin();
+  // 生产环境：优先从 Admin API，失败则降级到本地文件
+  const adminDocs = await fetchDocsFromAdmin();
+  if (adminDocs.length > 0) {
+    return adminDocs;
+  }
+  // Admin API 返回空，降级到本地文件
+  console.log('[Docs API] Admin returned empty, falling back to local files');
+  return getLocalDocs();
 }
 
-// 获取单个文档（构建时优先本地，生产环境优先 Admin API）
+// 获取单个文档（构建时优先本地，生产环境优先 Admin API，失败则降级）
 export async function getDocBySlug(slug: string): Promise<string | null> {
   // 构建时或开发环境：优先本地文件
   if (isBuildTime || !isProduction) {
@@ -139,8 +145,14 @@ export async function getDocBySlug(slug: string): Promise<string | null> {
     return await fetchDocFromAdmin(slug);
   }
 
-  // 生产环境：优先从 Admin API
-  return await fetchDocFromAdmin(slug);
+  // 生产环境：优先从 Admin API，失败则降级到本地文件
+  const adminDoc = await fetchDocFromAdmin(slug);
+  if (adminDoc) {
+    return adminDoc;
+  }
+  // Admin API 没有该文档，降级到本地文件
+  console.log(`[Docs API] Admin returned null for ${slug}, falling back to local file`);
+  return getLocalDocBySlug(slug);
 }
 
 // 同步版本（用于客户端组件）

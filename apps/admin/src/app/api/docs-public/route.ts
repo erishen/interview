@@ -86,6 +86,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get('slug')
 
+    console.log('[Public Docs API] Request:', {
+      slug,
+      isSupabase: isSupabaseConfigured(),
+      isKV: isKVConfigured(),
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_ANON_KEY
+    })
+
     // 如果有 slug，返回单个文档
     if (slug) {
       // 3. 验证 slug 格式
@@ -99,7 +107,9 @@ export async function GET(request: NextRequest) {
       let doc = null
 
       if (isSupabaseConfigured()) {
+        console.log('[Public Docs API] Fetching from Supabase:', slug)
         doc = await supabaseGetDoc(slug)
+        console.log('[Public Docs API] Supabase result:', doc ? 'Found' : 'Not found')
       } else if (isKVConfigured()) {
         doc = await kvGetDoc(slug)
       } else {
@@ -136,6 +146,7 @@ export async function GET(request: NextRequest) {
 
     if (isSupabaseConfigured()) {
       docs = await supabaseGetAllDocs()
+      console.log('[Public Docs API] Fetched', docs.length, 'docs from Supabase')
     } else if (isKVConfigured()) {
       docs = await kvGetAllDocs()
     } else {
