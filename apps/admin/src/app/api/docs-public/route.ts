@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
     const hasValidOrigin = isValidOrigin(origin)
 
     if (!hasValidReferer && !hasValidOrigin) {
-      console.error('[Public Docs API] 403: No valid referer or origin', { referer, origin, ...debugInfo })
+      console.error('[Public Docs API] 403: No valid referer or origin', debugInfo)
       return new NextResponse('Forbidden', { status: 403 })
     }
   }
