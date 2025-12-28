@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { getAllDocs, type Doc } from '@/lib/docs';
 
+// 禁用静态生成，强制每次请求都动态渲染
+export const dynamic = 'force-dynamic';
+
 export default async function DocsPage() {
   const docs = await getAllDocs();
 
