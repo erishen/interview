@@ -59,6 +59,7 @@
     "eslint-config-next": "catalog:",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
+    "tsx": "^4.21.0",
     "typescript": "catalog:"
   }
 }
