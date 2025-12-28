@@ -14,7 +14,7 @@ const ADMIN_API_URL = process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:300
 const DOCS_API_ENDPOINT = `${ADMIN_API_URL}/api/docs-public`; // 使用公开 API，无需认证
 
 // 是否为生产环境
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
 // 是否为构建时（静态生成）
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
