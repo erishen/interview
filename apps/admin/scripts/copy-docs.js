@@ -7,16 +7,42 @@
 const fs = require('fs');
 const path = require('path');
 
-const DOCS_SOURCE = path.resolve(__dirname, '../../docs');
-const DOCS_DEST = path.resolve(__dirname, '.next/docs');
+// 智能查找 docs 目录（支持多种路径结构）
+function findDocsDir() {
+  const possiblePaths = [
+    // monorepo 结构：docs 在根目录
+    path.resolve(__dirname, '../../../docs'),
+    // 单独应用结构：docs 在 apps 目录
+    path.resolve(__dirname, '../../docs'),
+    // Vercel 默认结构
+    path.resolve(process.cwd(), '../../docs'),
+    path.resolve(process.cwd(), '../docs'),
+  ];
+
+  for (const dirPath of possiblePaths) {
+    if (fs.existsSync(dirPath)) {
+      return dirPath;
+    }
+  }
+
+  return null;
+}
+
+const DOCS_SOURCE = findDocsDir();
+const DOCS_DEST = path.resolve(__dirname, '../.next/docs');
 
 console.log('Copying docs directory for deployment...');
 console.log('Source:', DOCS_SOURCE);
 console.log('Destination:', DOCS_DEST);
 
 // 检查源目录是否存在
-if (!fs.existsSync(DOCS_SOURCE)) {
-  console.error('Error: docs directory not found:', DOCS_SOURCE);
+if (!DOCS_SOURCE || !fs.existsSync(DOCS_SOURCE)) {
+  console.error('Error: docs directory not found');
+  console.error('Tried paths:');
+  console.error('  -', path.resolve(__dirname, '../../../docs'));
+  console.error('  -', path.resolve(__dirname, '../../docs'));
+  console.error('  -', path.resolve(process.cwd(), '../../docs'));
+  console.error('  -', path.resolve(process.cwd(), '../docs'));
   process.exit(1);
 }
 
