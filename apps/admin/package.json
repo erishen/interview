@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "node scripts/dev.js build",
+    "build:with-docs": "node scripts/dev.js build && node scripts/copy-docs.js",
     "dev": "node scripts/dev.js dev",
     "lint": "next lint",
     "start": "node scripts/dev.js start",

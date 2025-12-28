@@ -3,9 +3,10 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
+import { getDocsDir, ensureDocsSubdir } from '@/lib/docs-path'
 
-const DOCS_DIR = path.join(process.cwd(), '../../docs')
-const VERSIONS_DIR = path.join(DOCS_DIR, '.versions')
+const DOCS_DIR = getDocsDir()
+const VERSIONS_DIR = ensureDocsSubdir('.versions') || path.join(DOCS_DIR, '.versions')
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {

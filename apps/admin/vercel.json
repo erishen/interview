@@ -1,3 +1,5 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "buildCommand": "pnpm build:with-docs",
+  "outputDirectory": ".next"
 }

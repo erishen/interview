@@ -3,20 +3,11 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
+import { getDocsDir, ensureDocsSubdir } from '@/lib/docs-path'
 
-const DOCS_DIR = path.join(process.cwd(), '../../docs')
-const TRASH_DIR = path.join(DOCS_DIR, '.trash')
-const VERSIONS_DIR = path.join(DOCS_DIR, '.versions')
-
-// 确保回收站目录存在
-if (!fs.existsSync(TRASH_DIR)) {
-  fs.mkdirSync(TRASH_DIR, { recursive: true })
-}
-
-// 确保版本目录存在
-if (!fs.existsSync(VERSIONS_DIR)) {
-  fs.mkdirSync(VERSIONS_DIR, { recursive: true })
-}
+const DOCS_DIR = getDocsDir()
+const TRASH_DIR = ensureDocsSubdir('.trash') || path.join(DOCS_DIR, '.trash')
+const VERSIONS_DIR = ensureDocsSubdir('.versions') || path.join(DOCS_DIR, '.versions')
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {
