@@ -185,8 +185,15 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 })
     }
 
+    // 如果文件不存在，尝试从只读目录复制
     if (!fs.existsSync(filePath)) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      const readOnlyPath = path.join(getDocsDir(), `${slug}.md`)
+      if (fs.existsSync(readOnlyPath)) {
+        console.log(`[Docs] Copying ${slug}.md from read-only to writable directory`)
+        fs.copyFileSync(readOnlyPath, filePath)
+      } else {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      }
     }
 
     const content = fs.readFileSync(filePath, 'utf-8')
@@ -242,8 +249,15 @@ export async function PUT(
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
     }
 
+    // 如果文件不存在，尝试从只读目录复制
     if (!fs.existsSync(filePath)) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      const readOnlyPath = path.join(getDocsDir(), `${slug}.md`)
+      if (fs.existsSync(readOnlyPath)) {
+        console.log(`[Docs] Copying ${slug}.md from read-only to writable directory`)
+        fs.copyFileSync(readOnlyPath, filePath)
+      } else {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      }
     }
 
     // 在更新前保存当前版本
@@ -287,8 +301,15 @@ export async function DELETE(
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
     }
 
+    // 如果文件不存在，尝试从只读目录复制
     if (!fs.existsSync(filePath)) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      const readOnlyPath = path.join(getDocsDir(), `${slug}.md`)
+      if (fs.existsSync(readOnlyPath)) {
+        console.log(`[Docs] Copying ${slug}.md from read-only to writable directory`)
+        fs.copyFileSync(readOnlyPath, filePath)
+      } else {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      }
     }
 
     // 软删除：移动到回收站

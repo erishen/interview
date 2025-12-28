@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
+import { getDocsDir, getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
 
 // 初始化可写的 docs 目录（仅在 Vercel 生产环境）
 initializeWritableDocs()
@@ -131,6 +131,25 @@ export async function GET(request: NextRequest) {
 
     if (!fs.existsSync(targetDir)) {
       return NextResponse.json({ success: false, error: 'Directory not found' }, { status: 404 })
+    }
+
+    // 如果可写目录为空（且不是回收站），从只读目录复制文件
+    if (!trash && process.env.VERCEL === '1') {
+      const files = fs.readdirSync(targetDir)
+      if (files.length === 0) {
+        const readOnlyDocsDir = getDocsDir()
+        if (fs.existsSync(readOnlyDocsDir)) {
+          console.log('[Docs] Copying all docs from read-only to writable directory')
+          const readOnlyFiles = fs.readdirSync(readOnlyDocsDir)
+          for (const file of readOnlyFiles) {
+            if (file.endsWith('.md')) {
+              const srcPath = path.join(readOnlyDocsDir, file)
+              const destPath = path.join(targetDir, file)
+              fs.copyFileSync(srcPath, destPath)
+            }
+          }
+        }
+      }
     }
 
     const files = fs.readdirSync(targetDir)
