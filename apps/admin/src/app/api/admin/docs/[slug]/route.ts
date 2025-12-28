@@ -3,15 +3,12 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { getDocsDir, getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
+import { isKVConfigured, getDoc as kvGetDoc, createDoc as kvCreateDoc, updateDoc as kvUpdateDoc, deleteDoc as kvDeleteDoc, getTrashDocs, restoreDoc as kvRestoreDoc, deleteFromTrash as kvDeleteFromTrash } from '@/lib/kv-store'
+import { getDocsDir } from '@/lib/docs-path'
 
-// 初始化可写的 docs 目录（仅在 Vercel 生产环境）
-initializeWritableDocs()
-
-const DOCS_DIR = getDocsDir() // 只读目录
-const WRITABLE_DOCS_DIR = getWritableDocsDir() // 可写目录
-const TRASH_DIR = ensureDocsSubdir('.trash') || path.join(WRITABLE_DOCS_DIR, '.trash')
-const VERSIONS_DIR = ensureDocsSubdir('.versions') || path.join(WRITABLE_DOCS_DIR, '.versions')
+// 本地开发目录
+const DOCS_DIR = getDocsDir()
+const TRASH_DIR = path.join(DOCS_DIR, '.trash')
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {
@@ -39,7 +36,7 @@ function isValidSlug(slug: string): { valid: boolean; error?: string } {
 // CORS headers
 function setCorsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   return response
 }
@@ -111,57 +108,39 @@ async function logDocAction(
   }
 }
 
-// 保存文档版本
-async function saveVersion(
-  slug: string,
-  content: string,
-  message: string,
-  user: any
-) {
-  try {
-    const versionId = Date.now().toString()
-    const docVersionDir = path.join(VERSIONS_DIR, slug)
-
-    // 确保文档版本目录存在
-    if (!fs.existsSync(docVersionDir)) {
-      fs.mkdirSync(docVersionDir, { recursive: true })
-    }
-
-    const versionData = {
-      id: versionId,
-      doc_slug: slug,
-      content: content,
-      message: message,
-      author: user.name || user.email || 'Unknown',
-      created_at: new Date().toISOString(),
-    }
-
-    const versionPath = path.join(docVersionDir, `${versionId}.json`)
-    fs.writeFileSync(versionPath, JSON.stringify(versionData, null, 2), 'utf-8')
-
-    console.log('[Version Control] Saved version:', versionId, 'for doc:', slug)
-
-    // 限制版本数量：只保留最近50个版本
-    const versionFiles = fs.readdirSync(docVersionDir)
-      .filter(file => file.endsWith('.json'))
-      .sort()
-
-    if (versionFiles.length > 50) {
-      // 删除最旧的版本
-      const filesToDelete = versionFiles.slice(0, versionFiles.length - 50)
-      for (const file of filesToDelete) {
-        fs.unlinkSync(path.join(docVersionDir, file))
-      }
-      console.log('[Version Control] Cleaned up old versions, kept latest 50')
-    }
-  } catch (error) {
-    console.error('[Version Control] Error saving version:', error)
+// 保存版本（本地开发）
+async function saveVersion(slug: string, content: string, message: string, user: any): Promise<void> {
+  if (isKVConfigured()) {
+    // Vercel KV 暂不支持版本控制
+    return
   }
+
+  const VERSIONS_DIR = path.join(DOCS_DIR, '.versions')
+  if (!fs.existsSync(VERSIONS_DIR)) {
+    fs.mkdirSync(VERSIONS_DIR, { recursive: true })
+  }
+
+  const versionId = Date.now().toString()
+  const versionPath = path.join(VERSIONS_DIR, `${slug}_${versionId}.json`)
+
+  const versionData = {
+    slug,
+    content,
+    message,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    },
+    timestamp: new Date().toISOString(),
+  }
+
+  fs.writeFileSync(versionPath, JSON.stringify(versionData, null, 2), 'utf-8')
 }
 
-// 获取单个文档内容 (公开访问，用于 Web 应用)
+// 获取文档
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
   // 公开访问，不需要登录验证
@@ -179,40 +158,44 @@ export async function GET(
       return NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 })
     }
 
-    // 规范化路径，防止路径遍历
-    const filePath = path.normalize(path.join(WRITABLE_DOCS_DIR, `${slug}.md`))
-    if (!filePath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
-      return NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 })
-    }
+    let doc
 
-    // 如果文件不存在，尝试从只读目录复制
-    if (!fs.existsSync(filePath)) {
-      const readOnlyPath = path.join(getDocsDir(), `${slug}.md`)
-      if (fs.existsSync(readOnlyPath)) {
-        console.log(`[Docs] Copying ${slug}.md from read-only to writable directory`)
-        fs.copyFileSync(readOnlyPath, filePath)
-      } else {
+    if (isKVConfigured()) {
+      // 使用 Vercel KV 存储
+      doc = await kvGetDoc(slug)
+    } else {
+      // 文件系统存储（本地开发）
+      const filePath = path.join(DOCS_DIR, `${slug}.md`)
+      if (!fs.existsSync(filePath)) {
         return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
       }
-    }
 
-    const content = fs.readFileSync(filePath, 'utf-8')
+      const content = fs.readFileSync(filePath, 'utf-8')
+      const stats = fs.statSync(filePath)
 
-    // 提取标题和描述
-    const titleMatch = content.match(/^#\s+(.+)$/m)
-    const title = titleMatch ? titleMatch[1] : slug
+      const titleMatch = content.match(/^#\s+(.+)$/m)
+      const title = titleMatch ? titleMatch[1] : slug
 
-    const descMatch = content.match(/^> (.+)$/m)
-    const description = descMatch ? descMatch[1] : undefined
+      const descMatch = content.match(/^> (.+)$/m)
+      const description = descMatch ? descMatch[1] : undefined
 
-    return setCorsHeaders(NextResponse.json({
-      success: true,
-      doc: {
+      doc = {
         slug,
         title,
         description,
-        content
+        content,
+        created_at: stats.birthtime.toISOString(),
+        updated_at: stats.mtime.toISOString(),
       }
+    }
+
+    if (!doc) {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+    }
+
+    return setCorsHeaders(NextResponse.json({
+      success: true,
+      doc,
     }))
   } catch (error) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to load document' }, { status: 500 }))
@@ -243,34 +226,44 @@ export async function PUT(
       return setCorsHeaders(NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 }))
     }
 
-    // 规范化路径，防止路径遍历
-    const filePath = path.normalize(path.join(WRITABLE_DOCS_DIR, `${slug}.md`))
-    if (!filePath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
-    }
+    let success
 
-    // 如果文件不存在，尝试从只读目录复制
-    if (!fs.existsSync(filePath)) {
-      const readOnlyPath = path.join(getDocsDir(), `${slug}.md`)
-      if (fs.existsSync(readOnlyPath)) {
-        console.log(`[Docs] Copying ${slug}.md from read-only to writable directory`)
-        fs.copyFileSync(readOnlyPath, filePath)
-      } else {
+    if (isKVConfigured()) {
+      // 使用 Vercel KV 存储
+      const existingDoc = await kvGetDoc(slug)
+      if (!existingDoc) {
         return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
       }
+
+      // 提取标题（从内容中）
+      const titleMatch = content.match(/^#\s+(.+)$/m)
+      const title = titleMatch ? titleMatch[1] : slug
+
+      success = await kvUpdateDoc(slug, title, content)
+    } else {
+      // 文件系统存储（本地开发）
+      const filePath = path.join(DOCS_DIR, `${slug}.md`)
+
+      if (!fs.existsSync(filePath)) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
+      }
+
+      // 在更新前保存当前版本
+      const currentContent = fs.readFileSync(filePath, 'utf-8')
+      await saveVersion(slug, currentContent, message, session.user)
+
+      // 更新文档
+      fs.writeFileSync(filePath, content, 'utf-8')
+      success = true
     }
 
-    // 在更新前保存当前版本
-    const currentContent = fs.readFileSync(filePath, 'utf-8')
-    await saveVersion(slug, currentContent, message, session.user)
-
-    // 更新文档
-    fs.writeFileSync(filePath, content, 'utf-8')
-
-    // 记录操作日志（异步，不等待结果）
-    logDocAction('update', slug, session)
-
-    return setCorsHeaders(NextResponse.json({ success: true, message: 'Document updated' }))
+    if (success) {
+      // 记录操作日志（异步，不等待结果）
+      logDocAction('update', slug, session)
+      return setCorsHeaders(NextResponse.json({ success: true, message: 'Document updated' }))
+    } else {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to update document' }, { status: 500 }))
+    }
   } catch (error) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to update document' }, { status: 500 }))
   }
@@ -295,34 +288,39 @@ export async function DELETE(
       return setCorsHeaders(NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 }))
     }
 
-    // 规范化路径，防止路径遍历
-    const filePath = path.normalize(path.join(WRITABLE_DOCS_DIR, `${slug}.md`))
-    if (!filePath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
-    }
+    let success
 
-    // 如果文件不存在，尝试从只读目录复制
-    if (!fs.existsSync(filePath)) {
-      const readOnlyPath = path.join(getDocsDir(), `${slug}.md`)
-      if (fs.existsSync(readOnlyPath)) {
-        console.log(`[Docs] Copying ${slug}.md from read-only to writable directory`)
-        fs.copyFileSync(readOnlyPath, filePath)
-      } else {
+    if (isKVConfigured()) {
+      // 使用 Vercel KV 存储
+      success = await kvDeleteDoc(slug)
+    } else {
+      // 文件系统存储（本地开发）
+      const filePath = path.join(DOCS_DIR, `${slug}.md`)
+
+      if (!fs.existsSync(filePath)) {
         return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
       }
+
+      // 软删除：移动到回收站
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const trashFileName = `${slug}_${timestamp}.md`
+      const trashPath = path.join(TRASH_DIR, trashFileName)
+
+      if (!fs.existsSync(TRASH_DIR)) {
+        fs.mkdirSync(TRASH_DIR, { recursive: true })
+      }
+
+      fs.renameSync(filePath, trashPath)
+      success = true
     }
 
-    // 软删除：移动到回收站
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const trashFileName = `${slug}_${timestamp}.md`
-    const trashPath = path.join(TRASH_DIR, trashFileName)
-
-    fs.renameSync(filePath, trashPath)
-
-    // 记录操作日志（异步，不等待结果）
-    logDocAction('delete', slug, session)
-
-    return setCorsHeaders(NextResponse.json({ success: true, message: 'Document moved to trash' }))
+    if (success) {
+      // 记录操作日志（异步，不等待结果）
+      logDocAction('delete', slug, session)
+      return setCorsHeaders(NextResponse.json({ success: true, message: 'Document moved to trash' }))
+    } else {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to delete document' }, { status: 500 }))
+    }
   } catch (error) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to delete document' }, { status: 500 }))
   }
@@ -346,28 +344,48 @@ export async function PATCH(
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 }))
     }
 
-    // 查找回收站中的文件
-    const trashFiles = fs.readdirSync(TRASH_DIR)
-    console.log('[Restore] Looking for slug:', slug)
-    console.log('[Restore] Available trash files:', trashFiles)
-    const trashFile = trashFiles.find(f => f.startsWith(`${slug}_`))
-    console.log('[Restore] Found trash file:', trashFile)
+    let success
 
-    if (!trashFile) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found in trash' }, { status: 404 }))
+    if (isKVConfigured()) {
+      // 使用 Vercel KV 存储
+      // 查找回收站中的文件（需要 timestamp）
+      const trashDocs = await getTrashDocs()
+      const trashDoc = trashDocs.find(d => d.slug === slug)
+
+      if (!trashDoc) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found in trash' }, { status: 404 }))
+      }
+
+      success = await kvRestoreDoc(slug, trashDoc.trash_timestamp)
+    } else {
+      // 文件系统存储（本地开发）
+      const trashFiles = fs.readdirSync(TRASH_DIR)
+      console.log('[Restore] Looking for slug:', slug)
+      console.log('[Restore] Available trash files:', trashFiles)
+      const trashFile = trashFiles.find(f => f.startsWith(`${slug}_`))
+      console.log('[Restore] Found trash file:', trashFile)
+
+      if (!trashFile) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found in trash' }, { status: 404 }))
+      }
+
+      const trashPath = path.join(TRASH_DIR, trashFile)
+      const restorePath = path.join(DOCS_DIR, `${slug}.md`)
+
+      // 检查目标文件是否已存在
+      if (fs.existsSync(restorePath)) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document already exists' }, { status: 409 }))
+      }
+
+      fs.renameSync(trashPath, restorePath)
+      success = true
     }
 
-    const trashPath = path.join(TRASH_DIR, trashFile)
-    const restorePath = path.join(WRITABLE_DOCS_DIR, `${slug}.md`)
-
-    // 检查目标文件是否已存在
-    if (fs.existsSync(restorePath)) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document already exists' }, { status: 409 }))
+    if (success) {
+      return setCorsHeaders(NextResponse.json({ success: true, message: 'Document restored' }))
+    } else {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to restore document' }, { status: 500 }))
     }
-
-    fs.renameSync(trashPath, restorePath)
-
-    return setCorsHeaders(NextResponse.json({ success: true, message: 'Document restored' }))
   } catch (error) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to restore document' }, { status: 500 }))
   }

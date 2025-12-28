@@ -3,13 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { getDocsDir, getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
-
-// 初始化可写的 docs 目录（仅在 Vercel 生产环境）
-initializeWritableDocs()
-
-const WRITABLE_DOCS_DIR = getWritableDocsDir() // 可写目录
-const TRASH_DIR = ensureDocsSubdir('.trash') || path.join(WRITABLE_DOCS_DIR, '.trash')
+import { isKVConfigured, getAllDocs, createDoc as kvCreateDoc, updateDoc as kvUpdateDoc, deleteDoc as kvDeleteDoc, getTrashDocs, restoreDoc as kvRestoreDoc, deleteFromTrash as kvDeleteFromTrash } from '@/lib/kv-store'
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {
@@ -127,55 +121,50 @@ export async function GET(request: NextRequest) {
   const trash = searchParams.get('trash') === 'true'
 
   try {
-    const targetDir = trash ? TRASH_DIR : WRITABLE_DOCS_DIR
+    let docs
 
-    if (!fs.existsSync(targetDir)) {
-      return NextResponse.json({ success: false, error: 'Directory not found' }, { status: 404 })
-    }
-
-    // 如果可写目录为空（且不是回收站），从只读目录复制文件
-    if (!trash && process.env.VERCEL === '1') {
-      const files = fs.readdirSync(targetDir)
-      if (files.length === 0) {
-        const readOnlyDocsDir = getDocsDir()
-        if (fs.existsSync(readOnlyDocsDir)) {
-          console.log('[Docs] Copying all docs from read-only to writable directory')
-          const readOnlyFiles = fs.readdirSync(readOnlyDocsDir)
-          for (const file of readOnlyFiles) {
-            if (file.endsWith('.md')) {
-              const srcPath = path.join(readOnlyDocsDir, file)
-              const destPath = path.join(targetDir, file)
-              fs.copyFileSync(srcPath, destPath)
-            }
-          }
-        }
+    if (isKVConfigured()) {
+      // 使用 Vercel KV 存储
+      if (trash) {
+        docs = await getTrashDocs()
+      } else {
+        docs = await getAllDocs()
       }
+    } else {
+      // 文件系统存储（本地开发）
+      const DOCS_DIR = path.join(process.cwd(), '../../docs')
+      const TRASH_DIR = path.join(DOCS_DIR, '.trash')
+      const targetDir = trash ? TRASH_DIR : DOCS_DIR
+
+      if (!fs.existsSync(targetDir)) {
+        return NextResponse.json({ success: false, error: 'Directory not found' }, { status: 404 })
+      }
+
+      const files = fs.readdirSync(targetDir)
+      docs = files
+        .filter(file => file.endsWith('.md'))
+        .map(file => {
+          // 回收站文件格式: slug_2025-12-26T00-53-17-764Z.md
+          const slug = trash ? file.replace(/_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.md$/, '') : file.replace(/\.md$/, '')
+          const filePath = path.join(targetDir, file)
+          const content = fs.readFileSync(filePath, 'utf-8')
+          const stats = fs.statSync(filePath)
+
+          const titleMatch = content.match(/^#\s+(.+)$/m)
+          const title = titleMatch ? titleMatch[1] : slug
+
+          const descMatch = content.match(/^> (.+)$/m)
+          const description = descMatch ? descMatch[1] : undefined
+
+          return { slug, title, description, created_at: stats.birthtime.toISOString(), updated_at: stats.mtime.toISOString() }
+        })
+        // 按创建时间倒序排列
+        .sort((a, b) => {
+          const dateA = new Date(a.created_at || 0)
+          const dateB = new Date(b.created_at || 0)
+          return dateB.getTime() - dateA.getTime()
+        })
     }
-
-    const files = fs.readdirSync(targetDir)
-    const docs = files
-      .filter(file => file.endsWith('.md'))
-      .map(file => {
-        // 回收站文件格式: slug_2025-12-26T00-53-17-764Z.md
-        const slug = trash ? file.replace(/_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.md$/, '') : file.replace(/\.md$/, '')
-        const filePath = path.join(targetDir, file)
-        const content = fs.readFileSync(filePath, 'utf-8')
-        const stats = fs.statSync(filePath)
-
-        const titleMatch = content.match(/^#\s+(.+)$/m)
-        const title = titleMatch ? titleMatch[1] : slug
-
-        const descMatch = content.match(/^> (.+)$/m)
-        const description = descMatch ? descMatch[1] : undefined
-
-        return { slug, title, description, created_at: stats.birthtime.toISOString(), updated_at: stats.mtime.toISOString() }
-      })
-      // 按创建时间倒序排列
-      .sort((a, b) => {
-        const dateA = new Date(a.created_at || 0)
-        const dateB = new Date(b.created_at || 0)
-        return dateB.getTime() - dateA.getTime()
-      })
 
     return setCorsHeaders(NextResponse.json({ success: true, docs, isTrash: trash }))
   } catch (error) {
@@ -203,24 +192,37 @@ export async function POST(request: NextRequest) {
       return setCorsHeaders(NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 }))
     }
 
-    const filePath = path.join(WRITABLE_DOCS_DIR, `${slug}.md`)
+    let success
 
-    if (fs.existsSync(filePath)) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Document already exists' }, { status: 409 }))
+    if (isKVConfigured()) {
+      // 使用 Vercel KV 存储
+      success = await kvCreateDoc(slug, title, content)
+    } else {
+      // 文件系统存储（本地开发）
+      const DOCS_DIR = path.join(process.cwd(), '../../docs')
+      const filePath = path.join(DOCS_DIR, `${slug}.md`)
+
+      if (fs.existsSync(filePath)) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Document already exists' }, { status: 409 }))
+      }
+
+      // 规范化路径，防止路径遍历
+      const normalizedPath = path.normalize(filePath)
+      if (!normalizedPath.startsWith(path.normalize(DOCS_DIR))) {
+        return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
+      }
+
+      fs.writeFileSync(filePath, content, 'utf-8')
+      success = true
     }
 
-    // 规范化路径，防止路径遍历
-    const normalizedPath = path.normalize(filePath)
-    if (!normalizedPath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
-      return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
+    if (success) {
+      // 记录操作日志（异步，不等待结果）
+      logDocAction('create', slug, session)
+      return setCorsHeaders(NextResponse.json({ success: true, message: 'Document created' }))
+    } else {
+      return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to create document' }, { status: 500 }))
     }
-
-    fs.writeFileSync(filePath, content, 'utf-8')
-
-    // 记录操作日志（异步，不等待结果）
-    logDocAction('create', slug, session)
-
-    return setCorsHeaders(NextResponse.json({ success: true, message: 'Document created' }))
   } catch (error) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'Failed to create document' }, { status: 500 }))
   }

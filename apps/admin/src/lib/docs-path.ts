@@ -29,20 +29,31 @@ export function getDocsDir(): string {
 
 /**
  * 获取可写的 docs 目录路径
- * 在 Vercel 生产环境中，使用 /tmp 目录来存储修改后的文件
+ * 在 Vercel 生产环境中，使用本地文件系统（仅演示用，不持久化）
+ * 生产环境应该使用 FastAPI 后端或 Vercel KV 等持久化存储
  */
 export function getWritableDocsDir(): string {
-  // 在 Vercel 上使用 /tmp 目录
+  const docsDir = getDocsDir()
+
+  // 在 Vercel 上，返回只读目录（写入会失败，但可以读取）
   if (process.env.VERCEL === '1') {
-    const tmpDir = path.join('/tmp', 'interview-docs')
-    if (!fs.existsSync(tmpDir)) {
-      fs.mkdirSync(tmpDir, { recursive: true })
-    }
-    return tmpDir
+    console.log('[Docs] Vercel environment detected')
+    console.log('[Docs] Using read-only docs directory')
+    console.log('[Docs] WARNING: File modifications will NOT persist in Vercel Serverless')
+    console.log('[Docs] Please use FastAPI backend or Vercel KV for production')
+    return docsDir
   }
 
   // 本地开发直接使用原始 docs 目录
-  return getDocsDir()
+  return docsDir
+}
+
+/**
+ * 检查是否在只读模式（Vercel）
+ * 注意：如果配置了 Vercel KV，就不是只读模式
+ */
+export function isReadOnlyMode(): boolean {
+  return process.env.VERCEL === '1' && !process.env.KV_REST_API_URL
 }
 
 /**
