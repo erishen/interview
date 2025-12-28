@@ -16,6 +16,9 @@ const DOCS_API_ENDPOINT = `${ADMIN_API_URL}/api/docs-public`; // 使用公开 AP
 // 是否为生产环境
 const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
+// 获取当前站点 URL 用于设置 referer
+const SITE_URL = process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000';
+
 // 是否为构建时（静态生成）
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
                      process.env.NEXT_PHASE === 'phase-development-build';
@@ -31,6 +34,10 @@ async function fetchDocsFromAdmin(): Promise<Doc[]> {
   try {
     const response = await fetch(DOCS_API_ENDPOINT, {
       cache: 'no-store', // 禁用缓存
+      headers: {
+        'Referer': SITE_URL,
+        'Origin': SITE_URL,
+      },
     });
 
     if (!response.ok) {
@@ -59,6 +66,10 @@ async function fetchDocFromAdmin(slug: string): Promise<string | null> {
     url.searchParams.set('slug', slug);
     const response = await fetch(url.toString(), {
       cache: 'no-store', // 禁用缓存
+      headers: {
+        'Referer': SITE_URL,
+        'Origin': SITE_URL,
+      },
     });
 
     if (!response.ok) {

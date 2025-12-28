@@ -83,18 +83,19 @@ export async function GET(request: NextRequest) {
     userAgent: request.headers.get('user-agent')?.substring(0, 100)
   }
 
-  // 1. 验证 Referer（防止直接 API 调用）
+  // 1. 验证 Referer 或 Origin（防止直接 API 调用）
   const referer = request.headers.get('referer')
-  if (isProduction && !referer) {
-    console.error('[Public Docs API] 403: No referer', debugInfo)
-    return new NextResponse(null, { status: 403 })
-  }
-
-  // 2. 验证 Origin
   const origin = request.headers.get('origin')
-  if (isProduction && !isValidOrigin(origin)) {
-    console.error('[Public Docs API] 403: Invalid origin', debugInfo)
-    return new NextResponse('Forbidden', { status: 403 })
+
+  if (isProduction) {
+    // 至少需要有效的 referer 或 origin
+    const hasValidReferer = isValidOrigin(referer)
+    const hasValidOrigin = isValidOrigin(origin)
+
+    if (!hasValidReferer && !hasValidOrigin) {
+      console.error('[Public Docs API] 403: No valid referer or origin', { referer, origin, ...debugInfo })
+      return new NextResponse('Forbidden', { status: 403 })
+    }
   }
 
   try {
@@ -112,6 +113,7 @@ export async function GET(request: NextRequest) {
     }
     console.log('[Public Docs API] Config:', configInfo)
     console.log('[Public Docs API] Request:', debugInfo)
+    console.log('[Public Docs API] Validating: Referer:', referer, 'Origin:', origin)
 
     // 如果有 slug，返回单个文档
     if (slug) {
