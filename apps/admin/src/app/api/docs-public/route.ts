@@ -21,7 +21,9 @@ const ALLOWED_ORIGINS = ALLOWED_ORIGINS_ENV
   .filter(Boolean)
 
 // 开发环境额外允许 localhost 任意端口
-if (process.env.NODE_ENV === 'development') {
+const isDev = process.env.NODE_ENV === 'development'
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
+if (isDev) {
   ALLOWED_ORIGINS.push('http://localhost:*')
 }
 
@@ -83,14 +85,14 @@ export async function GET(request: NextRequest) {
 
   // 1. 验证 Referer（防止直接 API 调用）
   const referer = request.headers.get('referer')
-  if (process.env.NODE_ENV === 'production' && !referer) {
+  if (isProduction && !referer) {
     console.error('[Public Docs API] 403: No referer', debugInfo)
     return new NextResponse(null, { status: 403 })
   }
 
   // 2. 验证 Origin
   const origin = request.headers.get('origin')
-  if (process.env.NODE_ENV === 'production' && !isValidOrigin(origin)) {
+  if (isProduction && !isValidOrigin(origin)) {
     console.error('[Public Docs API] 403: Invalid origin', debugInfo)
     return new NextResponse('Forbidden', { status: 403 })
   }
@@ -211,7 +213,7 @@ export async function GET(request: NextRequest) {
       ...debugInfo
     })
     // 生产环境不返回详细错误信息
-    const errorMessage = process.env.NODE_ENV === 'production'
+    const errorMessage = isProduction
       ? 'Failed to load docs'
       : String(error)
     return NextResponse.json(
