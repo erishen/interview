@@ -87,6 +87,10 @@ public
 tmp/
 temp/
 
+# Test scripts (may contain sensitive info)
+scripts/test-*.ts
+**/scripts/test-*.ts
+
 # Editor directories and files
 .vscode/
 .idea/

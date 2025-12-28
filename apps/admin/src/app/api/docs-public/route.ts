@@ -70,15 +70,27 @@ function setCorsHeaders(response: NextResponse, requestOrigin: string | null) {
  * 供 web 项目使用
  */
 export async function GET(request: NextRequest) {
+  // 获取调试信息（无论生产环境都记录）
+  const debugInfo = {
+    timestamp: new Date().toISOString(),
+    path: request.url,
+    method: request.method,
+    referer: request.headers.get('referer'),
+    origin: request.headers.get('origin'),
+    userAgent: request.headers.get('user-agent')?.substring(0, 100)
+  }
+
   // 1. 验证 Referer（防止直接 API 调用）
   const referer = request.headers.get('referer')
   if (process.env.NODE_ENV === 'production' && !referer) {
+    console.error('[Public Docs API] 403: No referer', debugInfo)
     return new NextResponse(null, { status: 403 })
   }
 
   // 2. 验证 Origin
   const origin = request.headers.get('origin')
   if (process.env.NODE_ENV === 'production' && !isValidOrigin(origin)) {
+    console.error('[Public Docs API] 403: Invalid origin', debugInfo)
     return new NextResponse('Forbidden', { status: 403 })
   }
 
@@ -86,18 +98,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get('slug')
 
-    console.log('[Public Docs API] Request:', {
+    // 记录请求配置（总是记录）
+    const configInfo = {
       slug,
       isSupabase: isSupabaseConfigured(),
       isKV: isKVConfigured(),
       hasSupabaseUrl: !!process.env.SUPABASE_URL,
-      hasSupabaseKey: !!process.env.SUPABASE_ANON_KEY
-    })
+      hasSupabaseKey: !!process.env.SUPABASE_ANON_KEY,
+      NODE_ENV: process.env.NODE_ENV
+    }
+    console.log('[Public Docs API] Config:', configInfo)
+    console.log('[Public Docs API] Request:', debugInfo)
 
     // 如果有 slug，返回单个文档
     if (slug) {
       // 3. 验证 slug 格式
       if (!isValidSlug(slug)) {
+        console.error('[Public Docs API] 400: Invalid slug', { slug, ...debugInfo })
         return NextResponse.json(
           { success: false, error: 'Invalid slug' },
           { status: 400 }
@@ -109,7 +126,12 @@ export async function GET(request: NextRequest) {
       if (isSupabaseConfigured()) {
         console.log('[Public Docs API] Fetching from Supabase:', slug)
         doc = await supabaseGetDoc(slug)
-        console.log('[Public Docs API] Supabase result:', doc ? 'Found' : 'Not found')
+        console.log('[Public Docs API] Supabase result:', {
+          slug,
+          found: !!doc,
+          docTitle: doc?.title,
+          docLength: doc?.content?.length
+        })
       } else if (isKVConfigured()) {
         doc = await kvGetDoc(slug)
       } else {
@@ -129,6 +151,7 @@ export async function GET(request: NextRequest) {
       }
 
       if (!doc) {
+        console.error('[Public Docs API] 404: Document not found', { ...configInfo, docSlug: slug })
         return NextResponse.json(
           { success: false, error: 'Document not found' },
           { status: 404 }
@@ -181,7 +204,11 @@ export async function GET(request: NextRequest) {
     response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
     return setCorsHeaders(response, origin)
   } catch (error) {
-    console.error('[Public Docs API] Error:', error)
+    console.error('[Public Docs API] Error:', {
+      error: String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      ...debugInfo
+    })
     // 生产环境不返回详细错误信息
     const errorMessage = process.env.NODE_ENV === 'production'
       ? 'Failed to load docs'
