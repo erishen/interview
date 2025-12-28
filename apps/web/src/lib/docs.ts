@@ -46,7 +46,10 @@ async function fetchDocsFromAdmin(): Promise<Doc[]> {
     }
 
     const data = await response.json();
-    return data.success ? data.docs : [];
+    console.log('[Docs API] Admin response:', data);
+    const docs = data.success ? data.docs : [];
+    console.log('[Docs API] Fetched docs count:', docs.length, 'from Admin');
+    return docs;
   } catch (error) {
     console.error('[Docs API] Error fetching docs from Admin:', error);
     return [];
