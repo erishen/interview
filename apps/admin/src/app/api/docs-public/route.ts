@@ -68,6 +68,7 @@ function setCorsHeaders(response: NextResponse, requestOrigin: string | null) {
 /**
  * 公开 API - 获取文档列表（无需认证）
  * 供 web 项目使用
+ * Last updated: 2025-12-28 17:05 UTC
  */
 export async function GET(request: NextRequest) {
   // 获取调试信息（无论生产环境都记录）
