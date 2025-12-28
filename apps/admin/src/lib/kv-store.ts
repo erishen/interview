@@ -7,6 +7,7 @@ let kv: any = null
 async function getKV(): Promise<any> {
   if (!kv) {
     try {
+      // @ts-ignore - 动态导入，TypeScript 可能找不到类型
       // 动态导入 @vercel/kv（仅在 Vercel 环境中可用）
       const { createClient } = await import('@vercel/kv')
 

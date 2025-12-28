@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
+import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8081'
@@ -63,13 +63,20 @@ export async function POST(request: NextRequest) {
     // 方法 1: 尝试使用 NextAuth token 获取 FastAPI token
     const nextAuthToken = await getNextAuthToken(request)
     if (nextAuthToken) {
+      // 创建超时控制器
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30000) // 30 秒超时
+
       const response = await fetch(`${FASTAPI_URL}/auth/token-from-nextauth`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${nextAuthToken}`
         },
+        signal: controller.signal
       })
+
+      clearTimeout(timeout)
 
       if (response.ok) {
         const data = await response.json()
@@ -95,11 +102,18 @@ export async function POST(request: NextRequest) {
     }
     formData.append('password', fastApiPassword || process.env.FASTAPI_ADMIN_PASSWORD || 'secret')
 
+    // 创建超时控制器
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30000) // 30 秒超时
+
     const response = await fetch(`${FASTAPI_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: formData.toString(),
+      signal: controller.signal
     })
+
+    clearTimeout(timeout)
 
     const responseText = await response.text()
 

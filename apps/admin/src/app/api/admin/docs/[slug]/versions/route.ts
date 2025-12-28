@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
+import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import fs from 'fs'
-import path from 'path'
+import * as fs from 'fs'
+import * as path from 'path'
 import { getDocsDir, getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
 
 // 初始化可写的 docs 目录（仅在 Vercel 生产环境）

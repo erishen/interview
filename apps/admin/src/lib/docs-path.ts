@@ -1,5 +1,5 @@
-import fs from 'fs'
-import path from 'path'
+import * as fs from 'fs'
+import * as path from 'path'
 
 /**
  * 动态获取只读的 docs 目录路径，支持本地开发和 Vercel 部署
