@@ -161,9 +161,9 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // 4. 设置缓存头（单个文档缓存 5 分钟）
+      // 4. 设置缓存头（禁用缓存以获取最新数据）
       const response = NextResponse.json({ success: true, doc })
-      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
       return setCorsHeaders(response, origin)
     }
 
@@ -202,9 +202,9 @@ export async function GET(request: NextRequest) {
         })
     }
 
-    // 5. 设置缓存头（列表缓存 1 分钟）
+    // 5. 设置缓存头（禁用缓存以获取最新数据）
     const response = NextResponse.json({ success: true, docs })
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
     return setCorsHeaders(response, origin)
   } catch (error) {
     console.error('[Public Docs API] Error:', {

@@ -30,7 +30,7 @@ async function fetchDocsFromAdmin(): Promise<Doc[]> {
 
   try {
     const response = await fetch(DOCS_API_ENDPOINT, {
-      next: { revalidate: 60 }, // 缓存 60 秒
+      cache: 'no-store', // 禁用缓存
     });
 
     if (!response.ok) {
@@ -56,7 +56,7 @@ async function fetchDocFromAdmin(slug: string): Promise<string | null> {
 
   try {
     const response = await fetch(`${DOCS_API_ENDPOINT}/${slug}`, {
-      next: { revalidate: 60 }, // 缓存 60 秒
+      cache: 'no-store', // 禁用缓存
     });
 
     if (!response.ok) {
