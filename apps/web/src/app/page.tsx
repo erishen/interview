@@ -159,7 +159,7 @@ export default function HomePage() {
             <span>|</span>
             <span>Admin App: <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003')}</a></span>
             <span>|</span>
-            <span>FastAPI: <a href={process.env.FASTAPI_URL || 'http://localhost:8081'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.FASTAPI_URL || 'http://localhost:8081')}</a></span>
+            <span>FastAPI: <a href={process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.FASTAPI_URL || 'http://localhost:8081'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.FASTAPI_URL || 'http://localhost:8081')}</a></span>
           </div>
         </div>
       </footer>
