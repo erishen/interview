@@ -3,11 +3,15 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { getDocsDir, ensureDocsSubdir } from '@/lib/docs-path'
+import { getDocsDir, getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
 
-const DOCS_DIR = getDocsDir()
-const TRASH_DIR = ensureDocsSubdir('.trash') || path.join(DOCS_DIR, '.trash')
-const VERSIONS_DIR = ensureDocsSubdir('.versions') || path.join(DOCS_DIR, '.versions')
+// 初始化可写的 docs 目录（仅在 Vercel 生产环境）
+initializeWritableDocs()
+
+const DOCS_DIR = getDocsDir() // 只读目录
+const WRITABLE_DOCS_DIR = getWritableDocsDir() // 可写目录
+const TRASH_DIR = ensureDocsSubdir('.trash') || path.join(WRITABLE_DOCS_DIR, '.trash')
+const VERSIONS_DIR = ensureDocsSubdir('.versions') || path.join(WRITABLE_DOCS_DIR, '.versions')
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {
@@ -176,8 +180,8 @@ export async function GET(
     }
 
     // 规范化路径，防止路径遍历
-    const filePath = path.normalize(path.join(DOCS_DIR, `${slug}.md`))
-    if (!filePath.startsWith(path.normalize(DOCS_DIR))) {
+    const filePath = path.normalize(path.join(WRITABLE_DOCS_DIR, `${slug}.md`))
+    if (!filePath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
       return NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 })
     }
 
@@ -233,8 +237,8 @@ export async function PUT(
     }
 
     // 规范化路径，防止路径遍历
-    const filePath = path.normalize(path.join(DOCS_DIR, `${slug}.md`))
-    if (!filePath.startsWith(path.normalize(DOCS_DIR))) {
+    const filePath = path.normalize(path.join(WRITABLE_DOCS_DIR, `${slug}.md`))
+    if (!filePath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
     }
 
@@ -278,8 +282,8 @@ export async function DELETE(
     }
 
     // 规范化路径，防止路径遍历
-    const filePath = path.normalize(path.join(DOCS_DIR, `${slug}.md`))
-    if (!filePath.startsWith(path.normalize(DOCS_DIR))) {
+    const filePath = path.normalize(path.join(WRITABLE_DOCS_DIR, `${slug}.md`))
+    if (!filePath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
     }
 
@@ -333,7 +337,7 @@ export async function PATCH(
     }
 
     const trashPath = path.join(TRASH_DIR, trashFile)
-    const restorePath = path.join(DOCS_DIR, `${slug}.md`)
+    const restorePath = path.join(WRITABLE_DOCS_DIR, `${slug}.md`)
 
     // 检查目标文件是否已存在
     if (fs.existsSync(restorePath)) {

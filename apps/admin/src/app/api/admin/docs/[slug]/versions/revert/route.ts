@@ -3,10 +3,14 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { getDocsDir, ensureDocsSubdir } from '@/lib/docs-path'
+import { getDocsDir, getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
 
-const DOCS_DIR = getDocsDir()
-const VERSIONS_DIR = ensureDocsSubdir('.versions') || path.join(DOCS_DIR, '.versions')
+// 初始化可写的 docs 目录（仅在 Vercel 生产环境）
+initializeWritableDocs()
+
+const DOCS_DIR = getDocsDir() // 只读目录
+const WRITABLE_DOCS_DIR = getWritableDocsDir() // 可写目录
+const VERSIONS_DIR = ensureDocsSubdir('.versions') || path.join(WRITABLE_DOCS_DIR, '.versions')
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {
@@ -99,7 +103,7 @@ export async function POST(
     const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf-8'))
 
     // 将版本内容恢复到主文档
-    const docPath = path.join(DOCS_DIR, `${slug}.md`)
+    const docPath = path.join(WRITABLE_DOCS_DIR, `${slug}.md`)
     if (!fs.existsSync(docPath)) {
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Document not found' }, { status: 404 }))
     }

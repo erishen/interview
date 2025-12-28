@@ -3,10 +3,13 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import fs from 'fs'
 import path from 'path'
-import { getDocsDir, ensureDocsSubdir } from '@/lib/docs-path'
+import { getWritableDocsDir, ensureDocsSubdir, initializeWritableDocs } from '@/lib/docs-path'
 
-const DOCS_DIR = getDocsDir()
-const TRASH_DIR = ensureDocsSubdir('.trash') || path.join(DOCS_DIR, '.trash')
+// 初始化可写的 docs 目录（仅在 Vercel 生产环境）
+initializeWritableDocs()
+
+const WRITABLE_DOCS_DIR = getWritableDocsDir() // 可写目录
+const TRASH_DIR = ensureDocsSubdir('.trash') || path.join(WRITABLE_DOCS_DIR, '.trash')
 
 // 安全验证：检查 slug 格式，防止路径遍历攻击
 function isValidSlug(slug: string): { valid: boolean; error?: string } {
@@ -124,7 +127,7 @@ export async function GET(request: NextRequest) {
   const trash = searchParams.get('trash') === 'true'
 
   try {
-    const targetDir = trash ? TRASH_DIR : DOCS_DIR
+    const targetDir = trash ? TRASH_DIR : WRITABLE_DOCS_DIR
 
     if (!fs.existsSync(targetDir)) {
       return NextResponse.json({ success: false, error: 'Directory not found' }, { status: 404 })
@@ -181,7 +184,7 @@ export async function POST(request: NextRequest) {
       return setCorsHeaders(NextResponse.json({ success: false, error: slugValidation.error }, { status: 400 }))
     }
 
-    const filePath = path.join(DOCS_DIR, `${slug}.md`)
+    const filePath = path.join(WRITABLE_DOCS_DIR, `${slug}.md`)
 
     if (fs.existsSync(filePath)) {
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Document already exists' }, { status: 409 }))
@@ -189,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     // 规范化路径，防止路径遍历
     const normalizedPath = path.normalize(filePath)
-    if (!normalizedPath.startsWith(path.normalize(DOCS_DIR))) {
+    if (!normalizedPath.startsWith(path.normalize(WRITABLE_DOCS_DIR))) {
       return setCorsHeaders(NextResponse.json({ success: false, error: 'Invalid slug' }, { status: 400 }))
     }
 
