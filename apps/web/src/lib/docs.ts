@@ -55,7 +55,9 @@ async function fetchDocFromAdmin(slug: string): Promise<string | null> {
   }
 
   try {
-    const response = await fetch(`${DOCS_API_ENDPOINT}/${slug}`, {
+    const url = new URL(DOCS_API_ENDPOINT);
+    url.searchParams.set('slug', slug);
+    const response = await fetch(url.toString(), {
       cache: 'no-store', // 禁用缓存
     });
 
