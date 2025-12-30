@@ -3,8 +3,8 @@
 A modern interview project built with Next.js and monorepo architecture using Turborepo.
 
 # Vercel URL
-- https://interview-admin-six.vercel.app
-- https://interview-web-sand.vercel.app
+- https://admin.erishen.cn
+- https://web.erishen.cn
 
 ## 🏗️ Architecture
 

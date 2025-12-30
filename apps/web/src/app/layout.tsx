@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import StyledComponentsRegistry from "@/lib/styled-components-registry";
+import GoogleAnalytics from "../components/GoogleAnalytics";
+import CookieConsent from "../components/CookieConsent";
 
 export const metadata: Metadata = {
   title: "Interview Project",
@@ -15,6 +17,8 @@ export default function RootLayout({
   return (
     <html lang="zh">
       <body>
+        <GoogleAnalytics />
+        <CookieConsent />
         <StyledComponentsRegistry>
           {children}
         </StyledComponentsRegistry>

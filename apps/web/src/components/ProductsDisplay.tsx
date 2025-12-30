@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, Button } from '@interview/ui'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 interface Product {
   id: number
@@ -23,9 +24,11 @@ export default function ProductsDisplay() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
+  const [loadingProductId, setLoadingProductId] = useState<number | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [showCart, setShowCart] = useState(false)
+  
+  const analytics = useAnalytics()
 
   const loadProducts = async (retryCount = 0) => {
     setLoading(true)
@@ -53,8 +56,10 @@ export default function ProductsDisplay() {
   }
 
   const addToCart = (product: Product) => {
+    const existingItem = cart.find((item) => item.id === product.id)
+    const quantity = existingItem ? existingItem.quantity + 1 : 1
+    
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id)
       if (existingItem) {
         return prevCart.map((item) =>
           item.id === product.id
@@ -65,22 +70,44 @@ export default function ProductsDisplay() {
       return [...prevCart, { ...product, quantity: 1 }]
     })
     setShowCart(true)
+    
+    // 埋点：添加到购物车
+    analytics.trackAddToCart(product, quantity)
   }
 
   const removeFromCart = (productId: number) => {
+    const item = cart.find((item) => item.id === productId)
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId))
+    
+    // 埋点：从购物车移除
+    if (item) {
+      analytics.trackRemoveFromCart(item, item.quantity)
+    }
   }
 
   const updateQuantity = (productId: number, delta: number) => {
+    const item = cart.find((item) => item.id === productId)
+    const oldQuantity = item ? item.quantity : 0
+    
     setCart((prevCart) =>
       prevCart
-        .map((item) =>
-          item.id === productId
-            ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-            : item
-        )
+        .map((item) => {
+          if (item.id === productId) {
+            const newQuantity = Math.max(1, item.quantity + delta)
+            return { ...item, quantity: newQuantity }
+          }
+          return item
+        })
         .filter((item) => item.quantity > 0)
     )
+    
+    // 埋点：修改数量
+    if (item && delta !== 0) {
+      const newItem = cart.find((i) => i.id === productId)
+      if (newItem) {
+        analytics.trackUpdateQuantity(item, oldQuantity, newItem.quantity)
+      }
+    }
   }
 
   const cartTotal = cart.reduce(
@@ -89,8 +116,18 @@ export default function ProductsDisplay() {
   )
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
 
+  // 监听购物车显示状态，添加埋点
+  useEffect(() => {
+    if (showCart && cart.length > 0) {
+      analytics.trackCartView(cartTotal, cartCount, cart)
+    }
+  }, [showCart, cartTotal, cartCount, cart, analytics])
+
   const handleShowDetail = async (product: Product) => {
-    setDetailLoading(true)
+    // 埋点：查看商品详情
+    analytics.trackProductDetail(product)
+    
+    setLoadingProductId(product.id)
     try {
       const response = await fetch(`/api/fastapi/items/${product.id}`)
       const data = await response.json()
@@ -102,7 +139,7 @@ export default function ProductsDisplay() {
     } catch (err) {
       alert('网络错误，无法加载商品详情')
     }
-    setDetailLoading(false)
+    setLoadingProductId(null)
   }
 
   useEffect(() => {
@@ -196,7 +233,11 @@ export default function ProductsDisplay() {
                     ¥{cartTotal.toFixed(2)}
                   </span>
                 </div>
-                <Button className="w-full mt-3">
+                <Button className="w-full mt-3" onClick={() => {
+                  // 埋点：结算
+                  analytics.trackCheckout(cartTotal, cartCount, cart)
+                  alert('结算功能待实现')
+                }}>
                   结算
                 </Button>
               </div>
@@ -263,9 +304,9 @@ export default function ProductsDisplay() {
                   size="sm"
                   variant="outline"
                   onClick={() => handleShowDetail(product)}
-                  disabled={detailLoading}
+                  disabled={loadingProductId === product.id}
                 >
-                  {detailLoading ? '加载中...' : '详情'}
+                  {loadingProductId === product.id ? '加载中...' : '详情'}
                 </Button>
               </div>
             </div>
@@ -359,6 +400,7 @@ export default function ProductsDisplay() {
                   <Button onClick={() => {
                     addToCart(selectedProduct!)
                     setSelectedProduct(null)
+                    // 埋点：从详情页添加到购物车（已经在 addToCart 中处理）
                   }}>
                     添加到购物车
                   </Button>
