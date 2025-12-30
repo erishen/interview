@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { getDocBySlug } from '@/lib/docs';
 import { MDXRemote } from 'next-mdx-remote/rsc';
+import { useTranslations } from 'next-intl';
 
 // 禁用静态生成，强制每次请求都动态渲染
 export const dynamic = 'force-dynamic';
 
-export default async function DocDetailPage({ params }: { params: { slug: string } }) {
+export default async function DocDetailPage({ params }: { params: { slug: string; locale: string } }) {
   const content = await getDocBySlug(params.slug);
+  const t = useTranslations('common');
 
   if (!content) {
     return (
@@ -16,9 +18,9 @@ export default async function DocDetailPage({ params }: { params: { slug: string
             <div className="flex justify-between items-center py-4">
               <h1 className="text-xl font-bold text-gray-900">Interview Web App</h1>
               <div className="space-x-4">
-                <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+                <Link href="/" className="text-gray-600 hover:text-gray-900">{t('home')}</Link>
                 <Link href="/docs" className="text-blue-600 hover:text-blue-900 font-medium">
-                  📚 文档
+                  📚 {t('docs')}
                 </Link>
               </div>
             </div>
@@ -48,9 +50,9 @@ export default async function DocDetailPage({ params }: { params: { slug: string
           <div className="flex justify-between items-center py-4">
             <h1 className="text-xl font-bold text-gray-900">Interview Web App</h1>
             <div className="space-x-4">
-              <Link href="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+              <Link href="/" className="text-gray-600 hover:text-gray-900">{t('home')}</Link>
               <Link href="/docs" className="text-blue-600 hover:text-blue-900 font-medium">
-                📚 文档
+                📚 {t('docs')}
               </Link>
             </div>
           </div>
@@ -63,7 +65,7 @@ export default async function DocDetailPage({ params }: { params: { slug: string
             href="/docs"
             className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6"
           >
-            ← 返回文档列表
+            ← {t('back')}
           </Link>
           
           <article className="bg-white rounded-lg shadow-sm p-8 md:p-12 prose prose-slate prose-lg max-w-none dark:prose-invert">

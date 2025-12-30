@@ -1,5 +1,7 @@
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import ProductsDisplay from '@/components/ProductsDisplay'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 // 禁用静态生成，强制每次请求都动态渲染
 export const dynamic = 'force-dynamic';
@@ -13,6 +15,13 @@ function getHostAndPort(urlStr: string): string {
 }
 
 export default function HomePage() {
+  const t = useTranslations('hero');
+  const tFeatures = useTranslations('features');
+  const tFooter = useTranslations('footer');
+  const tCommon = useTranslations('common');
+  const tNav = useTranslations('nav');
+  const tLang = useTranslations('language');
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* Navigation */}
@@ -21,13 +30,14 @@ export default function HomePage() {
           <div className="flex justify-between items-center py-4">
             <Link href="/" className="flex items-center space-x-2">
               <span className="text-2xl">🚀</span>
-              <h1 className="text-xl font-bold text-gray-900">Interview Web App</h1>
+              <h1 className="text-xl font-bold text-gray-900">{tNav('title')}</h1>
             </Link>
-            <div className="space-x-6">
-              <Link href="/" className="text-blue-600 hover:text-blue-900 font-medium transition-colors">Home</Link>
+            <div className="flex items-center space-x-6">
+              <Link href="/" className="text-blue-600 hover:text-blue-900 font-medium transition-colors">{tCommon('home')}</Link>
               <Link href="/docs" className="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                📚 文档
+                📚 {tCommon('docs')}
               </Link>
+              <LanguageSwitcher />
             </div>
           </div>
         </div>
@@ -37,34 +47,35 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-20">
         <div className="text-center max-w-4xl mx-auto">
           <h1 className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-6">
-            现代化全栈开发
+            {t('title')}
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-2xl mx-auto leading-relaxed">
-            基于 Next.js、TypeScript 和 Monorepo 架构构建的高性能 Web 应用
+            {t('subtitle')}
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
               href="/docs"
               className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
-              开始学习
-              <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5v6" />
+              <svg className="mr-2 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
+              {t('startLearning')}
             </Link>
             <a
               href={`${process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'}/docs-editor`}
               target="_blank"
               rel="noopener noreferrer"
-              title="文档编辑器（需要登录）"
+              title={t('adminTooltip')}
               className="inline-flex items-center px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow hover:shadow-lg"
             >
-              <svg className="mr-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <svg className="mr-2 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              管理后台
-              <svg className="ml-2 w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a 8 8 0 1 0 0-16 8 8 0 0 0 0 16zm1-11a 1 1 0 1 0 -2 0 1 1 0 0 0 2 0zm-1 8a 1 1 0 1 0 -2 0 1 1 0 0 1 2 0zm0-4a 1 1 0 1 0 -2 0 1 1 0 0 1 2 0z" clipRule="evenodd" />
+              {t('adminPanel')}
+              <svg className="ml-2 w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>
           </div>
@@ -77,10 +88,10 @@ export default function HomePage() {
               <span className="text-2xl">🏗️</span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              Monorepo 架构
+              {tFeatures('monorepo.title')}
             </h3>
             <p className="text-gray-600 leading-relaxed">
-              统一管理多个应用和共享包，代码复用率高，开发效率翻倍
+              {tFeatures('monorepo.description')}
             </p>
           </div>
 
@@ -89,10 +100,10 @@ export default function HomePage() {
               <span className="text-2xl">⚡</span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              Next.js 14
+              {tFeatures('nextjs.title')}
             </h3>
             <p className="text-gray-600 leading-relaxed">
-              最新 App Router、Server Components 和 RSC 技术，极致性能体验
+              {tFeatures('nextjs.description')}
             </p>
           </div>
 
@@ -101,10 +112,10 @@ export default function HomePage() {
               <span className="text-2xl">🔧</span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              开发者体验
+              {tFeatures('devExperience.title')}
             </h3>
             <p className="text-gray-600 leading-relaxed">
-              TypeScript + ESLint + Prettier + Turbo，现代化开发工作流
+              {tFeatures('devExperience.description')}
             </p>
           </div>
 
@@ -113,10 +124,10 @@ export default function HomePage() {
               <span className="text-2xl">🛍️</span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              商品展示
+              {tFeatures('products.title')}
             </h3>
             <p className="text-gray-600 leading-relaxed">
-              集成 FastAPI 后端，完整的 CRUD 操作和购物车功能
+              {tFeatures('products.description')}
             </p>
           </div>
 
@@ -125,10 +136,10 @@ export default function HomePage() {
               <span className="text-2xl">📚</span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              面试知识库
+              {tFeatures('knowledge.title')}
             </h3>
             <p className="text-gray-600 leading-relaxed">
-              系统化的前端面试资料，MDX 渲染，支持代码高亮
+              {tFeatures('knowledge.description')}
             </p>
           </div>
 
@@ -137,10 +148,10 @@ export default function HomePage() {
               <span className="text-2xl">🔒</span>
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">
-              安全认证
+              {tFeatures('auth.title')}
             </h3>
             <p className="text-gray-600 leading-relaxed">
-              NextAuth 认证系统，完整的登录、注册和权限管理
+              {tFeatures('auth.description')}
             </p>
           </div>
         </div>
@@ -155,14 +166,14 @@ export default function HomePage() {
       <footer className="bg-white border-t border-gray-200 py-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-600">
-            Built with ❤️ using Next.js, TypeScript, and FastAPI
+            {tFooter('builtWith')}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-6 text-sm text-gray-500">
-            <span>Web App: <a href={process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000')}</a></span>
+            <span>{tFooter('webApp')}: <a href={process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000')}</a></span>
             <span>|</span>
-            <span>Admin App: <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003')}</a></span>
+            <span>{tFooter('adminApp')}: <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3003')}</a></span>
             <span>|</span>
-            <span>FastAPI: <a href={process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.FASTAPI_URL || 'http://localhost:8081'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.FASTAPI_URL || 'http://localhost:8081')}</a></span>
+            <span>{tFooter('fastapi')}: <a href={process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.FASTAPI_URL || 'http://localhost:8081'} className="text-blue-600 hover:underline">{getHostAndPort(process.env.NEXT_PUBLIC_FASTAPI_URL || process.env.FASTAPI_URL || 'http://localhost:8081')}</a></span>
           </div>
         </div>
       </footer>

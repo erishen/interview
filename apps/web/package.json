@@ -25,6 +25,7 @@
     "ioredis": "catalog:",
     "lusca": "catalog:",
     "next": "catalog:",
+    "next-intl": "3",
     "next-mdx-remote": "^5.0.0",
     "postcss": "catalog:",
     "react": "catalog:",

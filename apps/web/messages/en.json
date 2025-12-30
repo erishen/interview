@@ -1,0 +1,59 @@
+{
+  "common": {
+    "home": "Home",
+    "docs": "Docs",
+    "search": "Search",
+    "loading": "Loading...",
+    "back": "Back",
+    "next": "Next",
+    "prev": "Previous",
+    "readMore": "Read More"
+  },
+  "nav": {
+    "title": "Interview Web App"
+  },
+  "hero": {
+    "title": "Modern Full-Stack Development",
+    "subtitle": "High-performance web application built with Next.js, TypeScript, and Monorepo architecture",
+    "startLearning": "Start Learning",
+    "adminPanel": "Admin Panel",
+    "adminTooltip": "Document Editor (Login Required)"
+  },
+  "features": {
+    "monorepo": {
+      "title": "Monorepo Architecture",
+      "description": "Unified management of multiple applications and shared packages, high code reuse, doubled development efficiency"
+    },
+    "nextjs": {
+      "title": "Next.js 14",
+      "description": "Latest App Router, Server Components and RSC technology, ultimate performance experience"
+    },
+    "devExperience": {
+      "title": "Developer Experience",
+      "description": "TypeScript + ESLint + Prettier + Turbo, modern development workflow"
+    },
+    "products": {
+      "title": "Product Display",
+      "description": "Integrated FastAPI backend, complete CRUD operations and shopping cart functionality"
+    },
+    "knowledge": {
+      "title": "Interview Knowledge Base",
+      "description": "Systematic frontend interview materials, MDX rendering, code highlighting support"
+    },
+    "auth": {
+      "title": "Security & Auth",
+      "description": "NextAuth authentication system, complete login, registration and permission management"
+    }
+  },
+  "footer": {
+    "builtWith": "Built with ❤️ using Next.js, TypeScript, and FastAPI",
+    "webApp": "Web App",
+    "adminApp": "Admin App",
+    "fastapi": "FastAPI"
+  },
+  "language": {
+    "switch": "Switch Language",
+    "zh": "简体中文",
+    "en": "English"
+  }
+}

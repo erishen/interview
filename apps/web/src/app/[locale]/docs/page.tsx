@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { getAllDocs, type Doc } from '@/lib/docs';
+import { useTranslations } from 'next-intl';
 
 // 禁用静态生成，强制每次请求都动态渲染
 export const dynamic = 'force-dynamic';
 
 export default async function DocsPage() {
   const docs = await getAllDocs();
+  const t = useTranslations('common');
 
   // Group docs by category based on title
   const coreDocs = docs.filter(doc => ['frontend', 'frontend-extended'].includes(doc.slug));
@@ -42,9 +44,9 @@ export default async function DocsPage() {
           <div className="flex justify-between items-center py-4">
             <h1 className="text-xl font-bold text-gray-900">Interview Web App</h1>
             <div className="space-x-4">
-              <Link href="/" className="text-blue-600 hover:text-blue-900 font-medium">Home</Link>
+              <Link href="/" className="text-blue-600 hover:text-blue-900 font-medium">{t('home')}</Link>
               <Link href="/docs" className="text-gray-600 hover:text-gray-900">
-                📚 文档
+                📚 {t('docs')}
               </Link>
             </div>
           </div>

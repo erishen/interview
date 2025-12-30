@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import StyledComponentsRegistry from "../lib/styled-components-registry";
+import StyledComponentsRegistry from "@/lib/styled-components-registry";
 
 export const metadata: Metadata = {
   title: "Interview Project",
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="zh">
       <body>
         <StyledComponentsRegistry>
           {children}
