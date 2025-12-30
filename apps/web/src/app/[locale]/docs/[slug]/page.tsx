@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { getDocBySlug } from '@/lib/docs';
 import { MDXRemote } from 'next-mdx-remote/rsc';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 // 禁用静态生成，强制每次请求都动态渲染
 export const dynamic = 'force-dynamic';
 
 export default async function DocDetailPage({ params }: { params: { slug: string; locale: string } }) {
   const content = await getDocBySlug(params.slug);
-  const t = useTranslations('common');
+  const t = await getTranslations('common');
 
   if (!content) {
     return (
