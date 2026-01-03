@@ -7,7 +7,8 @@
     "back": "Back",
     "next": "Next",
     "prev": "Previous",
-    "readMore": "Read More"
+    "readMore": "Read More",
+    "viewDemo": "View Demo"
   },
   "nav": {
     "title": "Interview Web App"
@@ -43,6 +44,10 @@
     "auth": {
       "title": "Security & Auth",
       "description": "NextAuth authentication system, complete login, registration and permission management"
+    },
+    "dataTable": {
+      "title": "DataTable Component",
+      "description": "Feature-rich data table with sorting, filtering, and pagination"
     }
   },
   "footer": {

@@ -19,10 +19,14 @@
     "@interview/types": "workspace:*",
     "@interview/ui": "workspace:*",
     "@interview/utils": "workspace:*",
+    "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/typography": "^0.5.19",
     "autoprefixer": "catalog:",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.0.0",
     "dotenv": "catalog:",
     "ioredis": "catalog:",
+    "lucide-react": "^0.562.0",
     "lusca": "catalog:",
     "next": "catalog:",
     "next-intl": "3",
@@ -36,7 +40,9 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "styled-components": "catalog:",
-    "tailwindcss": "catalog:"
+    "tailwind-merge": "^2.2.0",
+    "tailwindcss": "catalog:",
+    "tailwindcss-animate": "^1.0.7"
   },
   "engines": {
     "node": "20.x"

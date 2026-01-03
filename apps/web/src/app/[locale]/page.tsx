@@ -82,7 +82,7 @@ export default function HomePage() {
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mt-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto mt-16">
           <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all p-8 hover:-translate-y-1 border border-gray-100">
             <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6">
               <span className="text-2xl">🏗️</span>
@@ -153,6 +153,30 @@ export default function HomePage() {
             <p className="text-gray-600 leading-relaxed">
               {tFeatures('auth.description')}
             </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all p-8 hover:-translate-y-1 border border-gray-100">
+            <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-xl flex items-center justify-center mb-6">
+              <span className="text-2xl">📊</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-3">
+              {tFeatures('dataTable.title')}
+            </h3>
+            <p className="text-gray-600 leading-relaxed">
+              {tFeatures('dataTable.description')}
+            </p>
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <Link
+                href="/data-table-demo"
+                className="inline-flex items-center px-4 py-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-semibold rounded-lg transition-all duration-200"
+              >
+                <svg className="mr-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                {tCommon('viewDemo')}
+              </Link>
+            </div>
           </div>
         </div>
       </div>
